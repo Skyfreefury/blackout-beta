@@ -39,6 +39,12 @@ properties/4/replication_mode = 2
 properties/5/path = NodePath(".:revive_progress")
 properties/5/spawn = true
 properties/5/replication_mode = 2
+properties/6/path = NodePath(".:carried_kinds")
+properties/6/spawn = true
+properties/6/replication_mode = 2
+properties/7/path = NodePath(".:carried_values")
+properties/7/spawn = true
+properties/7/replication_mode = 2
 
 [node name="Player" type="CharacterBody2D"]
 collision_layer = 2

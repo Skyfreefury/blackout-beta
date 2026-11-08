@@ -31,6 +31,8 @@ var allow_teleport := false
 var map_seed := 0
 ## Nivel de la partida en curso. Cada nivel tiene una tarea más (nivel 1: 2 tareas).
 var game_level := 1
+## Botín total entregado en los niveles superados desde el nivel 1.
+var bank := 0
 
 var _loaded := {}
 var _in_game := false
@@ -153,6 +155,8 @@ func _sync_players(list: Dictionary, role_list: Dictionary) -> void:
 func _load_game(seed_value: int, level: int) -> void:
 	map_seed = seed_value
 	game_level = level
+	if level == 1:
+		bank = 0
 	get_tree().change_scene_to_file(GAME_SCENE)
 
 

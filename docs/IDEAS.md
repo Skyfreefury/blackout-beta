@@ -1,6 +1,6 @@
 # Ideas para próximas versiones
 
-Ideas anotadas el 2026-11-08. Implementado: roles, colocación aleatoria y tareas por nivel. Pendiente: tamaño del mapa y número de monstruos por nivel, y el modo extracción.
+Ideas anotadas el 2026-11-08. Implementado: roles, colocación aleatoria y tareas por nivel. Del modo extracción ya está la cuota de botín por nivel. Pendiente: tamaño del mapa y número de monstruos por nivel, y gastar el botín entre partidas.
 
 ## Mapas que cambian en cada partida
 | Opción | Qué cambia | Trabajo |
@@ -32,6 +32,7 @@ Colocación aleatoria implementada. El hospital marca 3 sitios por generador, 3 
 ## Modo extracción con botín (extraction looter)
 - Encaja con el bucle actual. La salida ya es una extracción y las pilas ya son botín.
 - Cambios: objetos de valor repartidos por el hospital, inventario con peso o huecos limitados, varias salidas que se abren en momentos distintos.
+- Implementado: 4 objetos de valor (muestras 20 a 40 €, instrumental 40 a 70 €, reloj 80 a 120 €, microscopio 120 a 180 €), mochila de 3 huecos, carro de entrega y cuota de 100 € + 100 € por nivel para abrir la salida. El botín de los niveles superados se suma.
 - Lo que no se saca se pierde al morir. Lo extraído se gasta entre partidas en mejoras: linternas, más batería, botiquines.
 - Riesgo: necesita progreso guardado entre partidas y equilibrar la economía. Es el cambio más grande de esta lista.
 

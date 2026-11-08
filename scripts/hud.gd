@@ -26,6 +26,7 @@ var _end := PanelContainer.new()
 var _end_text := Label.new()
 var _end_hint := Label.new()
 var _role_label := Label.new()
+var _bag := Label.new()
 
 
 func _ready() -> void:
@@ -50,6 +51,9 @@ func _ready() -> void:
 	_flash.add_theme_color_override("font_color", ACCENT)
 	add_child(_flash)
 
+	_bag.position = Vector2(6, size.y - 30)
+	_bag.add_theme_color_override("font_color", BATTERY_COLOR)
+	add_child(_bag)
 	_build_pause()
 	_build_end()
 
@@ -59,6 +63,9 @@ func _process(delta: float) -> void:
 	_flash_timer = maxf(_flash_timer - delta, 0.0)
 	_flash.visible = _flash_timer > 0.0
 	_status.text = "" if _end.visible else _status_text()
+	_bag.position.y = size.y - 30
+	_bag.text = "" if player == null or player.carried_values.is_empty() \
+		else "Mochila %d/%d  %d €" % [player.carried_values.size(), Player.MAX_CARRY, player.carried_total()]
 	queue_redraw()
 
 
@@ -84,6 +91,7 @@ func show_end(victory: bool, time: float, survivors: PackedStringArray, is_host:
 	])
 	if victory:
 		lines.append("Supervivientes: " + ", ".join(survivors))
+		lines.append("Botín total: %d €" % Net.bank)
 	_end_text.text = "\n".join(lines)
 	_end_text.add_theme_color_override("font_color", STAMINA_COLOR if victory else ACCENT)
 	var next := ("R: nivel %d" % (level + 1)) if victory else ("R: repetir nivel %d" % level)

@@ -5,6 +5,10 @@ extends CharacterBody2D
 ## El anfitrión decide derribos, reanimaciones, muerte y huida (nodo ServerSync).
 
 signal state_changed
+## Solo en el anfitrión: el jugador ha entregado botín en el carro.
+signal deposited(amount: int)
+## Solo en el anfitrión: el jugador ha caído y suelta la mochila en el suelo.
+signal dropped_loot(kinds: PackedInt32Array, values: PackedInt32Array, pos: Vector2)
 
 const WALK_SPEED := 60.0
 const RUN_SPEED := 100.0
@@ -23,6 +27,10 @@ const LIGHT_ENERGY := 1.2
 ## Apuntar al monstruo gasta la linterna al doble de velocidad: vigilarle tiene un coste.
 const MONSTER_DRAIN := 2.0
 const PICKUP_RADIUS := 14.0
+## Huecos de la mochila. Cada objeto llevado quita un 8% de velocidad.
+const MAX_CARRY := 3
+const CARRY_SLOW := 0.08
+const CART_RANGE := 22.0
 const REVIVE_RANGE := 18.0
 const REVIVE_TIME := 4.0
 const BLEED_OUT_TIME := 30.0
@@ -70,6 +78,9 @@ var escaped := false:
 		if value != escaped:
 			escaped = value
 			state_changed.emit()
+## Mochila: tipo y valor de cada objeto llevado. La decide el anfitrión.
+var carried_kinds := PackedInt32Array()
+var carried_values := PackedInt32Array()
 ## Derribos recibidos. Con 1, el siguiente golpe mata.
 var down_count := 0
 var down_time := 0.0
@@ -229,6 +240,7 @@ func is_lighting(point: Vector2) -> bool:
 func hit() -> void:
 	if not multiplayer.is_server() or not can_act():
 		return
+	_drop_loot()
 	if down_count >= 1:
 		is_dead = true
 	else:
@@ -236,6 +248,22 @@ func hit() -> void:
 		down_time = BLEED_OUT_TIME
 		revive_progress = 0.0
 		is_down = true
+
+
+func carried_total() -> int:
+	var total := 0
+	for v in carried_values:
+		total += v
+	return total
+
+
+## Solo en el anfitrión: la mochila cae al suelo donde está el jugador.
+func _drop_loot() -> void:
+	if carried_values.is_empty():
+		return
+	dropped_loot.emit(carried_kinds, carried_values, global_position)
+	carried_kinds = PackedInt32Array()
+	carried_values = PackedInt32Array()
 
 
 func needs_work() -> bool:
@@ -257,7 +285,7 @@ func add_work(delta: float) -> void:
 		is_down = false
 
 
-## Busca algo cerca con E: compañero derribado, generador o pila.
+## Busca algo cerca con E: compañero derribado, tarea, pila, objeto de valor o carro.
 func start_interact() -> void:
 	var target := _find_hold_target()
 	if target != null:
@@ -268,6 +296,15 @@ func start_interact() -> void:
 		if global_position.distance_to(pickup.global_position) <= PICKUP_RADIUS:
 			_request_pickup.rpc_id(1, pickup.get_path())
 			return
+	if carried_values.size() < MAX_CARRY:
+		for loot: Loot in get_tree().get_nodes_in_group("loot"):
+			if global_position.distance_to(loot.global_position) <= PICKUP_RADIUS:
+				_request_loot.rpc_id(1, loot.get_path())
+				return
+	var cart := get_tree().get_first_node_in_group("cart") as Node2D
+	if cart != null and not carried_values.is_empty() \
+			and global_position.distance_to(cart.global_position) <= CART_RANGE:
+		_request_deposit.rpc_id(1)
 
 
 func _find_hold_target() -> Node:
@@ -355,6 +392,7 @@ func _move(delta: float) -> void:
 	var speed := run_speed if running else walk_speed
 	if down_count > 0:
 		speed *= WOUNDED_FACTOR
+	speed *= 1.0 - CARRY_SLOW * carried_values.size()
 	velocity = dir * speed
 	move_and_slide()
 
@@ -438,6 +476,33 @@ func _request_pickup(pickup_path: NodePath) -> void:
 		return
 	pickup.take.rpc()
 	_grant_battery.rpc_id(get_multiplayer_authority())
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _request_loot(loot_path: NodePath) -> void:
+	if not multiplayer.is_server() or _sender() != get_multiplayer_authority() or not can_act():
+		return
+	var loot := get_node_or_null(loot_path) as Loot
+	if loot == null or loot.is_queued_for_deletion() or carried_values.size() >= MAX_CARRY:
+		return
+	if global_position.distance_to(loot.global_position) > PICKUP_RADIUS + NET_TOLERANCE:
+		return
+	carried_kinds.append(loot.kind)
+	carried_values.append(loot.value)
+	loot.take.rpc()
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _request_deposit() -> void:
+	if not multiplayer.is_server() or _sender() != get_multiplayer_authority() or not can_act():
+		return
+	var cart := get_tree().get_first_node_in_group("cart") as Node2D
+	if cart == null or carried_values.is_empty() \
+			or global_position.distance_to(cart.global_position) > CART_RANGE + NET_TOLERANCE:
+		return
+	deposited.emit(carried_total())
+	carried_kinds = PackedInt32Array()
+	carried_values = PackedInt32Array()
 
 
 @rpc("any_peer", "call_local", "reliable")

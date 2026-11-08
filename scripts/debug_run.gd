@@ -5,6 +5,7 @@ extends Node
 ##   --scenario=lit|dark|chase|lamp|spawn   pruebas de luz (usar con --map=res://maps/test.txt)
 ##   --scenario=repair|door|revive|bleed    bucle de partida en el hospital
 ##   --scenario=trap|safe|allon|guard       luces de emergencia y vigilancia con linterna
+##   --scenario=loot|drop                   botín: entregar en el carro o soltarlo al caer
 ##   --nomonster                            congela al monstruo
 ##   --seed=N                               reparto de generadores, monstruo y pilas
 ##   --role=N                               rol del jugador local (índice de Roles.LIST)
@@ -123,6 +124,7 @@ func _setup(main: Node) -> void:
 			for gen: Task in main.tasks:
 				gen.progress = gen.hold_time()
 				gen.repaired = true
+			main.money = main.quota
 			await _wait(5)
 			player.global_position = level.cell_center(Vector2i(29, 5))
 			player.move_override = Vector2.UP
@@ -153,6 +155,20 @@ func _setup(main: Node) -> void:
 			player.light_on = false
 			player.global_position = level.cell_center(Vector2i(42, 16))
 			monster.global_position = level.cell_center(Vector2i(30, 16))
+		"loot", "drop":
+			# Coge 2 objetos de valor. loot: los entrega en el carro. drop: cae y los suelta.
+			for i in 2:
+				var loot: Loot = get_tree().get_nodes_in_group("loot")[0]
+				player.global_position = loot.global_position
+				await _wait(2)
+				player.start_interact()
+				await _wait(5)
+			if _args["scenario"] == "loot":
+				player.global_position = level.cart_position + Vector2(0, 12)
+				await _wait(2)
+				player.start_interact()
+			else:
+				player.hit()
 		"bleed":
 			player.hit()
 		"trap":
@@ -205,6 +221,7 @@ func _report(main: Node) -> void:
 		get_tree().get_nodes_in_group("players").size(),
 	]
 	line += " role=%d gen0=%.2f battery_max=%.0f run=%.0f angle=%.0f" % [p.role, main.tasks[0].progress if not main.tasks.is_empty() else 0.0, p.battery_max, p.run_speed, p.light_angle]
+	line += " money=%d quota=%d carried=%d loot=%d" % [main.money, main.quota, p.carried_values.size(), get_tree().get_nodes_in_group("loot").size()]
 	line += " level=%d tasks=%s" % [Net.game_level, ",".join((main.tasks as Array).map(func(t): return t.kind))]
 	line += " seed=%d gens_at=%s" % [main.level.map_seed, ",".join((main.tasks as Array).map(func(g): return str(main.level.world_to_cell(g.global_position))))]
 	line += " monster_dist=%.0f watchers=%d vel=(%.0f,%.0f) target=%s" % [monster.global_position.distance_to(p.global_position), monster._watchers.size(), monster.velocity.x, monster.velocity.y, monster._target]

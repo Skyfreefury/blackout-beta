@@ -9,6 +9,7 @@ Leyenda (la misma que lee scripts/level.gd):
   P  jugadores  M  monstruo  B  pila
   1-3  generador de la zona   4-6  lámpara de la zona 1-3 (se enciende al repararlo)
   a  archivador   o  ordenador   v  válvula   (tareas de mantener E)
+  $  objeto de valor (sitio candidato)   D  carro de entrega del botín
 
 Generadores, monstruo y pilas tienen varios sitios candidatos. scripts/level.gd elige
 uno de cada generador y del monstruo, y 8 pilas, con la semilla de la partida.
@@ -114,7 +115,18 @@ for x, y in ((10, 16), (48, 16), (4, 21), (46, 24), (4, 36), (25, 20), (37, 7), 
              (33, 11), (15, 7), (53, 7), (40, 16), (33, 30), (56, 21)):
     put(x, y, "B")
 
-WALKABLE = set(".,ESPMB456")
+# Carro de entrega junto a la entrada y sitios candidatos para objetos de valor.
+put(32, 8, "D")
+LOOT_SPOTS = (
+    (2, 8), (15, 10), (8, 12), (22, 11), (37, 12), (44, 6), (57, 9), (50, 12),
+    (20, 15), (36, 17), (12, 20), (8, 24), (26, 24), (34, 22), (47, 21), (53, 23),
+    (5, 28), (16, 31), (8, 37), (23, 30), (36, 33), (27, 36), (43, 33), (56, 28), (50, 38),
+)
+for x, y in LOOT_SPOTS:
+    assert grid[y][x] in ".,", f"sitio de botín ocupado: {(x, y)} = {grid[y][x]}"
+    put(x, y, "$")
+
+WALKABLE = set(".,ESPMB456$D")
 BLOCKING = set("#Xciwt123aov")
 
 
@@ -192,8 +204,8 @@ def validate() -> None:
         for gx, gy in find(g):
             assert any((gx + dx, gy + dy) in walk for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))), \
                 f"tarea {g} en {(gx, gy)} sin acceso"
-    lost = [c for c in find("B") + find("M") if c not in walk]
-    assert not lost, f"pila o monstruo inalcanzable: {lost}"
+    lost = [c for c in find("B") + find("M") + find("$") + find("D") if c not in walk]
+    assert not lost, f"pila, monstruo, botín o carro inalcanzable: {lost}"
     # Monstruo: rejilla reducida para su cuerpo grande. Desde cada sitio donde puede aparecer
     # debe llegar a las 3 zonas y a la entrada.
     zones = lamp_zone_cells()

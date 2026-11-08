@@ -1,7 +1,7 @@
-"""Sprites de las tareas que no son generadores: archivador, ordenador y válvula.
+"""Sprites de tareas (archivador, ordenador, válvula), objetos de valor y carro de entrega.
 
 Uso: python tools/gen_task_sprites.py
-Mismo tamaño que el generador (16x24) y la paleta de gen_placeholders.py.
+Tareas a 16x24 como el generador, objetos a 10x10 y carro a 16x16. Paleta de gen_placeholders.py.
 """
 from pathlib import Path
 
@@ -53,8 +53,65 @@ def valve():
     return outline(img)
 
 
+def loot_samples():
+    """Gradilla con tubos de muestras."""
+    img = canvas(10, 10)
+    rect(img, 1, 6, 8, 8, "gray")
+    for x, c in ((2, "red"), (4, "sick"), (6, "yellow")):
+        rect(img, x, 2, x + 1, 7, "white")
+        rect(img, x, 5, x + 1, 7, c)
+    return outline(img)
+
+
+def loot_tools():
+    """Bandeja de instrumental quirúrgico."""
+    img = canvas(10, 10)
+    rect(img, 0, 5, 9, 8, "light")
+    px(img, [(1, 4), (2, 4), (3, 4), (4, 4), (5, 4)], "white")   # bisturí
+    px(img, [(6, 3), (7, 4), (8, 3)], "white")                    # pinzas
+    px(img, [(2, 6), (4, 6), (6, 6), (8, 6)], "gray")
+    return outline(img)
+
+
+def loot_watch():
+    """Reloj de oro con cadena."""
+    img = canvas(10, 10)
+    rect(img, 2, 3, 7, 8, "yellow")
+    rect(img, 3, 4, 6, 7, "white")
+    px(img, [(4, 5), (5, 5), (4, 6)], "black")
+    px(img, [(4, 1), (5, 2), (6, 1), (7, 0)], "yellow")
+    return outline(img)
+
+
+def loot_microscope():
+    """Microscopio de laboratorio."""
+    img = canvas(10, 10)
+    rect(img, 1, 8, 8, 9, "slate")
+    rect(img, 6, 2, 7, 8, "gray")
+    rect(img, 2, 1, 4, 5, "light")
+    px(img, [(3, 6), (4, 6), (5, 6)], "gray")
+    px(img, [(3, 0)], "white")
+    return outline(img)
+
+
+def cart():
+    """Carro de hospital donde se entrega el botín."""
+    img = canvas(16, 16)
+    rect(img, 1, 3, 14, 10, "slate")
+    rect(img, 2, 4, 13, 9, "night")
+    rect(img, 0, 2, 15, 3, "light")
+    rect(img, 13, 0, 14, 2, "light")                # asa
+    px(img, [(3, 12), (12, 12)], "black")
+    rect(img, 2, 11, 4, 13, "gray")                 # ruedas
+    rect(img, 11, 11, 13, 13, "gray")
+    rect(img, 5, 5, 10, 7, "yellow")                # cinta amarilla
+    return outline(img)
+
+
 def main() -> None:
-    for name, make in (("task_archive", archive), ("task_computer", computer), ("task_valve", valve)):
+    for name, make in (("task_archive", archive), ("task_computer", computer), ("task_valve", valve),
+                       ("loot_samples", loot_samples), ("loot_tools", loot_tools),
+                       ("loot_watch", loot_watch), ("loot_microscope", loot_microscope), ("cart", cart)):
         make().save(OUT / f"{name}.png")
         print(f"ok: {name}.png")
 

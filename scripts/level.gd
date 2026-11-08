@@ -39,6 +39,12 @@ var lamp_spawns: Array = []
 var task_spawns: Array = []
 ## Tareas que se quedan en el mapa. -1 deja todas las del catálogo.
 var task_count := -1
+## Objetos de valor como posiciones. El mapa marca sus sitios candidatos con $.
+var loot_spawns: Array[Vector2] = []
+## Objetos de valor que se quedan en el mapa. -1 deja todos los candidatos.
+var loot_count := -1
+## Carro donde se entrega el botín (símbolo D).
+var cart_position := Vector2.ZERO
 var door_open := false
 ## Rejilla de caminos del monstruo. Las casillas junto a paredes cuentan como
 ## bloqueadas para que su cuerpo de 28 px no se enganche en las esquinas.
@@ -89,13 +95,15 @@ func _pick_spawns() -> void:
 	for y in size.y:
 		for x in size.x:
 			var c := _rows[y][x]
-			if c in SINGLE_PICKS or c == "B":
+			if c in SINGLE_PICKS or c == "B" or c == "$":
 				if not found.has(c):
 					found[c] = []
 				found[c].append(Vector2i(x, y))
 	for c: String in found:
 		var cells: Array = found[c]
 		var keep := 1 if c in SINGLE_PICKS else BATTERY_COUNT
+		if c == "$":
+			keep = loot_count if loot_count >= 0 else cells.size()
 		_shuffle(cells, rng)
 		_clear_cells(cells.slice(keep))
 	# Catálogo de tareas: los generadores que quedan y los demás símbolos de tarea.
@@ -207,6 +215,8 @@ func _place(cell: Vector2i) -> void:
 		"P": player_spawn = center
 		"M": monster_spawn = center
 		"B": battery_spawns.append(center)
+		"$": loot_spawns.append(center)
+		"D": cart_position = center
 		"L": lamp_spawns.append([center, 0])
 		"1", "2", "3": task_spawns.append([center, "generator", int(c)])
 		"a", "o", "v": task_spawns.append([center, Task.SYMBOLS[c], 0])

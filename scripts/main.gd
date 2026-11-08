@@ -1,12 +1,17 @@
 extends Node2D
 ## Escena de partida. Todos los equipos montan el mapa, lámparas, pilas, tareas y monstruo
 ## con los mismos nombres. El anfitrión crea un jugador por conexión cuando todos han cargado,
-## abre la salida al completar todas las tareas y decide el final.
+## abre la salida con todas las tareas hechas y la cuota de botín entregada, y decide el final.
 
 const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const MONSTER_SCENE := preload("res://scenes/monster.tscn")
 const TASK_SCENE := preload("res://scenes/task.tscn")
 const SPAWN_OFFSETS: Array[Vector2] = [Vector2(0, 0), Vector2(14, 0), Vector2(0, 14), Vector2(14, 14)]
+## Cuota de botín: 100 € más 100 € por nivel. Objetos de valor: 8 más 2 por nivel.
+const QUOTA_BASE := 100
+const QUOTA_PER_LEVEL := 100
+const LOOT_BASE := 8
+const LOOT_PER_LEVEL := 2
 ## Distancia al monstruo a la que empieza a oírse el latido.
 const HEARTBEAT_RANGE := 220.0
 
@@ -16,10 +21,14 @@ var monster: Monster
 ## Tareas de esta partida. Las primeras son los generadores, ordenados por zona.
 var tasks: Array[Task] = []
 var elapsed := 0.0
+## Botín entregado en el carro en esta partida y cuota para abrir la salida.
+var money := 0
+var quota := 0
 
 var _started := false
 var _ended := false
 var _victory := false
+var _drops := 0
 var _heartbeat: AudioStreamPlayer
 
 @onready var level: Level = $Level
@@ -41,6 +50,8 @@ func _ready() -> void:
 		Net.game_level = maxi(int(level_arg), 1)
 	if not level_arg.is_empty() or not Net.players.is_empty():
 		level.task_count = Net.game_level + 1
+		level.loot_count = LOOT_BASE + LOOT_PER_LEVEL * Net.game_level
+	quota = QUOTA_BASE + QUOTA_PER_LEVEL * Net.game_level
 	level.build()
 	_spawn_world()
 	Sfx.make_loop(self, "ambient_loop", -8.0).play()
@@ -80,6 +91,24 @@ func _spawn_world() -> void:
 		lamp.generator = by_zone.get(entry[1])
 		lamp.level = level
 		entities.add_child(lamp)
+	# Tipo y valor de cada objeto con la semilla del mapa: iguales en todos los equipos.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = level.map_seed + 1
+	for i in level.loot_spawns.size():
+		var rolled := Loot.roll(rng)
+		_add_loot("Loot%d" % i, level.loot_spawns[i], rolled[0], rolled[1])
+	if level.cart_position != Vector2.ZERO:
+		var cart := Sprite2D.new()
+		cart.name = "Cart"
+		cart.texture = preload("res://art/sprites/cart.png")
+		cart.position = level.cart_position
+		cart.add_to_group("cart")
+		var glow := PointLight2D.new()
+		glow.texture = LightTextures.radial(24.0)
+		glow.color = Color("e8c547")
+		glow.energy = 0.6
+		cart.add_child(glow)
+		entities.add_child(cart)
 	for i in level.battery_spawns.size():
 		var pickup := BatteryPickup.new()
 		pickup.name = "Battery%d" % i
@@ -92,6 +121,15 @@ func _spawn_world() -> void:
 	entities.add_child(monster)
 
 
+func _add_loot(node_name: String, pos: Vector2, kind: int, value: int) -> void:
+	var loot := Loot.new()
+	loot.name = node_name
+	loot.position = pos
+	loot.kind = kind
+	loot.value = value
+	entities.add_child(loot)
+
+
 func _physics_process(delta: float) -> void:
 	if not _started or _ended:
 		return
@@ -101,7 +139,8 @@ func _physics_process(delta: float) -> void:
 	_update_heartbeat()
 	if not multiplayer.is_server():
 		return
-	if not level.door_open and not tasks.is_empty() and tasks.all(func(t): return t.repaired):
+	if not level.door_open and not tasks.is_empty() and tasks.all(func(t): return t.repaired) \
+			and money >= quota:
 		_open_door.rpc()
 	_check_end()
 
@@ -152,9 +191,37 @@ func _setup_player(p: Player) -> void:
 	p.camera.limit_top = 0
 	p.camera.limit_right = px.x
 	p.camera.limit_bottom = px.y
+	if multiplayer.is_server():
+		p.deposited.connect(_on_deposited)
+		p.dropped_loot.connect(_on_dropped_loot)
 	if p.name.to_int() == multiplayer.get_unique_id():
 		player = p
 		hud.player = p
+
+
+## Solo en el anfitrión.
+func _on_deposited(amount: int) -> void:
+	_set_money.rpc(money + amount)
+
+
+@rpc("authority", "call_local", "reliable")
+func _set_money(value: int) -> void:
+	if value > money:
+		Sfx.play_at("battery", level.cart_position)
+	money = value
+
+
+## Solo en el anfitrión: la mochila de un jugador caído queda en el suelo para otro.
+func _on_dropped_loot(kinds: PackedInt32Array, values: PackedInt32Array, pos: Vector2) -> void:
+	for i in kinds.size():
+		_drops += 1
+		var offset := Vector2.from_angle(TAU * i / kinds.size()) * 8.0
+		_spawn_dropped.rpc("Drop%d" % _drops, pos + offset, kinds[i], values[i])
+
+
+@rpc("authority", "call_local", "reliable")
+func _spawn_dropped(node_name: String, pos: Vector2, kind: int, value: int) -> void:
+	_add_loot(node_name, pos, kind, value)
 
 
 ## Si el jugador local ya no juega, la cámara sigue a otro que siga activo.
@@ -197,7 +264,10 @@ func _objective_text() -> String:
 	if level.door_open:
 		return title + "\nEscapa por la salida"
 	var pending := tasks.filter(func(t): return not t.repaired)
-	var lines := PackedStringArray(["%s   Tareas %d/%d" % [title, tasks.size() - pending.size(), tasks.size()]])
+	var lines := PackedStringArray(["%s   Tareas %d/%d   Botín %d/%d €" % [
+		title, tasks.size() - pending.size(), tasks.size(), money, quota]])
+	if pending.is_empty() and money < quota:
+		lines.append("- Lleva objetos de valor al carro")
 	# Tareas iguales en una línea: "Reparar el generador x2".
 	var counts := {}
 	for t: Task in pending:
@@ -231,6 +301,8 @@ func _check_end() -> void:
 func _end_game(victory: bool, time: float, survivors: PackedStringArray) -> void:
 	_ended = true
 	_victory = victory
+	if victory:
+		Net.bank += money
 	hud.show_end(victory, time, survivors, multiplayer.is_server(), Net.game_level)
 
 
