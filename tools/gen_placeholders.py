@@ -3,6 +3,7 @@
 Uso: python tools/gen_placeholders.py
 Salida: art/sprites/*.png y art/preview/sprites.png (ampliada x8).
 """
+import random
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -73,6 +74,79 @@ def floor_tile(stained: bool) -> Image.Image:
     if stained:
         px(img, [(10, 11), (11, 11), (11, 12), (12, 12), (10, 12), (12, 13)], "blood")
         px(img, [(3, 2), (4, 3), (4, 4), (5, 5)], "gray")
+    return img
+
+
+def _speckle(img: Image.Image, seed: int, count: int, colors: list[str], box=(0, 0, 15, 15)) -> None:
+    rng = random.Random(seed)
+    x0, y0, x1, y1 = box
+    for _ in range(count):
+        px(img, [(rng.randint(x0, x1), rng.randint(y0, y1))], rng.choice(colors))
+
+
+def hospital_floor(variant: int) -> Image.Image:
+    """Azulejos de 8x8 con bisel: borde claro arriba a la izquierda, junta oscura abajo a la derecha.
+    variant 0 limpio, 1 sucio, 2 roto, 3 sangre, 4 charco."""
+    img = canvas(16, 16)
+    rect(img, 0, 0, 15, 15, "tile")
+    for ox in (0, 8):
+        for oy in (0, 8):
+            px(img, [(ox + i, oy) for i in range(7)] + [(ox, oy + i) for i in range(7)], "white")
+            px(img, [(ox + 7, oy + i) for i in range(8)] + [(ox + i, oy + 7) for i in range(8)], "sick")
+            px(img, [(ox + 6, oy + i) for i in range(1, 7)] + [(ox + i, oy + 6) for i in range(1, 7)], "light")
+    _speckle(img, 11 + variant, 4, ["light"], (1, 1, 14, 14))
+    if variant == 1:
+        _speckle(img, 21, 14, ["light", "gray", "sick"], (1, 1, 14, 14))
+    elif variant == 2:
+        # Azulejo partido con una esquina saltada.
+        px(img, [(9, 1), (10, 2), (10, 3), (11, 4), (12, 4), (13, 5)], "moss")
+        rect(img, 1, 9, 3, 10, "gray")
+        px(img, [(1, 11), (4, 9)], "slate")
+    elif variant == 3:
+        px(img, [(4, 5), (5, 5), (6, 6), (5, 6), (7, 7), (8, 8), (9, 8), (8, 9), (10, 9), (11, 10)], "blood")
+        px(img, [(5, 5), (8, 8), (9, 9)], "red")
+        px(img, [(12, 11), (13, 12), (3, 4)], "blood")
+    elif variant == 4:
+        rect(img, 4, 8, 11, 12, "moss")
+        rect(img, 6, 7, 10, 13, "moss")
+        px(img, [(6, 9), (7, 9)], "sick")
+    return img
+
+
+def concrete(variant: int) -> Image.Image:
+    """Hormigón del sótano. variant 0 liso, 1 manchado, 2 agrietado."""
+    img = canvas(16, 16)
+    rect(img, 0, 0, 15, 15, "gray")
+    _speckle(img, 31 + variant, 18, ["slate", "light"])
+    px(img, [(i, 15) for i in range(16)] + [(15, i) for i in range(16)], "slate")
+    if variant == 1:
+        rect(img, 3, 4, 9, 9, "slate")
+        rect(img, 5, 3, 8, 10, "slate")
+        px(img, [(6, 6), (7, 7)], "night")
+    elif variant == 2:
+        px(img, [(2, 1), (3, 2), (3, 3), (4, 4), (6, 5), (7, 6), (7, 7), (8, 8), (10, 9), (11, 10), (12, 12)], "night")
+    return img
+
+
+def wall_front() -> Image.Image:
+    """Pared vista de frente (tiene suelo debajo): remate oscuro, yeso sucio y zócalo verde."""
+    img = canvas(16, 16)
+    rect(img, 0, 0, 15, 2, "night")
+    px(img, [(i, 3) for i in range(16)], "gray")
+    rect(img, 0, 4, 15, 8, "light")
+    _speckle(img, 41, 8, ["gray", "white"], (0, 4, 15, 8))
+    px(img, [(i, 9) for i in range(16)], "sick")
+    rect(img, 0, 10, 15, 14, "moss")
+    px(img, [(3, 10), (3, 11), (11, 10), (11, 11), (11, 12), (7, 13)], "slate")
+    px(img, [(i, 15) for i in range(16)], "black")
+    return img
+
+
+def wall_top() -> Image.Image:
+    """Parte de arriba de una pared gruesa o pared sin suelo debajo."""
+    img = canvas(16, 16)
+    rect(img, 0, 0, 15, 15, "night")
+    _speckle(img, 51, 6, ["slate"])
     return img
 
 
@@ -268,7 +342,7 @@ def door_tile() -> Image.Image:
 
 
 def gurney_tile() -> Image.Image:
-    img = floor_tile(False)
+    img = hospital_floor(0)
     rect(img, 3, 1, 12, 14, "gray")
     rect(img, 4, 2, 11, 13, "white")
     rect(img, 5, 2, 10, 4, "light")
@@ -277,7 +351,7 @@ def gurney_tile() -> Image.Image:
 
 
 def wheelchair_tile() -> Image.Image:
-    img = floor_tile(False)
+    img = hospital_floor(0)
     rect(img, 2, 4, 3, 12, "night")
     rect(img, 12, 4, 13, 12, "night")
     rect(img, 4, 5, 11, 11, "scrubs")
@@ -287,7 +361,7 @@ def wheelchair_tile() -> Image.Image:
 
 
 def incubator_tile() -> Image.Image:
-    img = floor_tile(False)
+    img = hospital_floor(0)
     rect(img, 1, 3, 14, 13, "gray")
     rect(img, 2, 4, 13, 12, "light")
     rect(img, 6, 6, 9, 9, "flesh")
@@ -297,7 +371,7 @@ def incubator_tile() -> Image.Image:
 
 
 def table_tile() -> Image.Image:
-    img = floor_tile(False)
+    img = hospital_floor(0)
     rect(img, 1, 2, 14, 12, "gray")
     rect(img, 2, 3, 13, 11, "light")
     px(img, [(1, 13), (14, 13)], "night")
@@ -338,8 +412,9 @@ def main() -> None:
 
     # El orden fija las coordenadas del atlas que usa scripts/level.gd.
     atlas = [
-        floor_tile(False), wall_tile(), floor_tile(True), concrete_tile(), asphalt_tile(),
+        hospital_floor(0), wall_front(), hospital_floor(3), concrete(0), asphalt_tile(),
         stairs_tile(), door_tile(), gurney_tile(), wheelchair_tile(), incubator_tile(), table_tile(),
+        wall_top(), hospital_floor(1), hospital_floor(2), concrete(1), concrete(2), hospital_floor(4),
     ]
     tiles = canvas(16 * len(atlas), 16)
     for i, tile in enumerate(atlas):

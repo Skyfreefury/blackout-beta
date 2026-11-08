@@ -3,13 +3,20 @@ extends Node2D
 ## Construye el mapa desde un archivo de texto. La leyenda está en tools/gen_hospital_map.py.
 
 const TILE := 16
+# Coordenadas del atlas art/sprites/tiles.png (orden fijado en tools/gen_placeholders.py).
 const FLOOR := Vector2i(0, 0)
-const WALL := Vector2i(1, 0)
-const FLOOR_STAINED := Vector2i(2, 0)
+## Pared con suelo debajo: se ve su cara frontal.
+const WALL_FRONT := Vector2i(1, 0)
+## Pared con pared debajo: solo se ve la parte de arriba.
+const WALL_TOP := Vector2i(11, 0)
 const CONCRETE := Vector2i(3, 0)
 const ASPHALT := Vector2i(4, 0)
 const STAIRS := Vector2i(5, 0)
 const DOOR := Vector2i(6, 0)
+## Variantes de suelo de hospital con su probabilidad en %: limpio, sucio, roto, sangre, charco.
+const FLOOR_VARIANTS := [[Vector2i(0, 0), 70], [Vector2i(12, 0), 14], [Vector2i(13, 0), 8], [Vector2i(2, 0), 5], [Vector2i(16, 0), 3]]
+## Variantes de hormigón: liso, manchado, agrietado.
+const CONCRETE_VARIANTS := [[Vector2i(3, 0), 70], [Vector2i(14, 0), 15], [Vector2i(15, 0), 15]]
 const OBSTACLES := {"c": Vector2i(7, 0), "w": Vector2i(8, 0), "i": Vector2i(9, 0), "t": Vector2i(10, 0)}
 const TILES_TEXTURE := preload("res://art/sprites/tiles.png")
 ## Capa de física de los obstáculos: frenan el paso pero no cortan la luz.
@@ -58,6 +65,7 @@ func build() -> void:
 	for y in size.y:
 		for x in size.x:
 			_place(Vector2i(x, y))
+	_build_occluders()
 	_build_monster_grid()
 
 
@@ -88,6 +96,7 @@ func open_door() -> void:
 	door_open = true
 	for cell in _door_cells:
 		tiles.set_cell(cell, 0, FLOOR)
+	_build_occluders()
 
 
 ## Camino en coordenadas de mundo desde el monstruo hasta un objetivo.
@@ -104,7 +113,8 @@ func _place(cell: Vector2i) -> void:
 	var center := cell_center(cell)
 	match c:
 		"#":
-			tiles.set_cell(cell, 0, WALL)
+			var below := _char_at(cell + Vector2i.DOWN)
+			tiles.set_cell(cell, 0, WALL_TOP if below == "#" or below == "X" else WALL_FRONT)
 			return
 		"X":
 			tiles.set_cell(cell, 0, DOOR)
@@ -138,9 +148,17 @@ func _floor_for(cell: Vector2i) -> Vector2i:
 			if _char_at(cell + d) == ",":
 				concrete = true
 				break
-	if concrete:
-		return CONCRETE
-	return FLOOR_STAINED if (cell.x * 7 + cell.y * 13) % 11 == 0 else FLOOR
+	return _pick_variant(cell, CONCRETE_VARIANTS if concrete else FLOOR_VARIANTS)
+
+
+## Elige una variante según la posición, siempre la misma en todos los equipos.
+func _pick_variant(cell: Vector2i, variants: Array) -> Vector2i:
+	var roll := absi(cell.x * 73856093 ^ cell.y * 19349663) % 100
+	for entry: Array in variants:
+		roll -= entry[1]
+		if roll < 0:
+			return entry[0]
+	return variants[0][0]
 
 
 func _load_rows(path: String) -> PackedStringArray:
@@ -168,7 +186,6 @@ func _make_tile_set() -> TileSet:
 	ts.add_physics_layer()
 	ts.set_physics_layer_collision_layer(1, OBSTACLE_LAYER)
 	ts.set_physics_layer_collision_mask(1, 0)
-	ts.add_occlusion_layer()
 
 	var source := TileSetAtlasSource.new()
 	source.texture = TILES_TEXTURE
@@ -179,17 +196,10 @@ func _make_tile_set() -> TileSet:
 
 	var h := TILE / 2.0
 	var square := PackedVector2Array([Vector2(-h, -h), Vector2(h, -h), Vector2(h, h), Vector2(-h, h)])
-	for coords: Vector2i in [WALL, DOOR]:
+	for coords: Vector2i in [WALL_FRONT, WALL_TOP, DOOR]:
 		var data := source.get_tile_data(coords, 0)
 		data.add_collision_polygon(0)
 		data.set_collision_polygon_points(0, 0, square)
-		var occluder := OccluderPolygon2D.new()
-		occluder.polygon = square
-		# Solo proyectan sombra los bordes del fondo: la cara de la pared que mira
-		# a la luz queda iluminada y lo que hay detrás sigue a oscuras.
-		occluder.cull_mode = OccluderPolygon2D.CULL_COUNTER_CLOCKWISE
-		data.set_occluder_polygons_count(0, 1)
-		data.set_occluder_polygon(0, 0, occluder)
 	var inset := square.duplicate()
 	for i in inset.size():
 		inset[i] *= 0.75
@@ -320,3 +330,49 @@ func _nearest_open(cell: Vector2i) -> Vector2i:
 				best_dist = dist
 				best = c
 	return best
+
+
+## Sombras de las paredes: un segmento por cada borde entre pared y suelo, unidos en tramos.
+## Cada segmento solo proyecta sombra a la luz que le llega desde dentro de la pared: la cara
+## que mira a la linterna se ilumina entera y detrás queda oscuro, sin dientes de sierra.
+func _build_occluders() -> void:
+	var old := get_node_or_null("Occluders")
+	if old != null:
+		old.free()
+	var holder := Node2D.new()
+	holder.name = "Occluders"
+	add_child(holder)
+	var t := float(TILE)
+	for y in size.y:
+		_add_runs(holder, y, Vector2i.UP, func(x0, x1): return [Vector2(x0 * t, y * t), Vector2((x1 + 1) * t, y * t)])
+		_add_runs(holder, y, Vector2i.DOWN, func(x0, x1): return [Vector2((x1 + 1) * t, (y + 1) * t), Vector2(x0 * t, (y + 1) * t)])
+	for x in size.x:
+		_add_runs(holder, x, Vector2i.RIGHT, func(y0, y1): return [Vector2((x + 1) * t, y0 * t), Vector2((x + 1) * t, (y1 + 1) * t)], true)
+		_add_runs(holder, x, Vector2i.LEFT, func(y0, y1): return [Vector2(x * t, (y1 + 1) * t), Vector2(x * t, y0 * t)], true)
+
+
+## Recorre una fila (o columna) y crea un segmento por cada tramo seguido de paredes
+## cuyo vecino en la dirección dada no es pared.
+func _add_runs(holder: Node2D, line: int, side: Vector2i, to_points: Callable, vertical := false) -> void:
+	var length := size.y if vertical else size.x
+	var start := -1
+	for i in length + 1:
+		var cell := Vector2i(line, i) if vertical else Vector2i(i, line)
+		var exposed := i < length and _blocks_light(cell) and not _blocks_light(cell + side)
+		if exposed and start < 0:
+			start = i
+		elif not exposed and start >= 0:
+			var points: Array = to_points.call(start, i - 1)
+			var poly := OccluderPolygon2D.new()
+			poly.closed = false
+			poly.cull_mode = OccluderPolygon2D.CULL_COUNTER_CLOCKWISE
+			poly.polygon = PackedVector2Array(points)
+			var occ := LightOccluder2D.new()
+			occ.occluder = poly
+			holder.add_child(occ)
+			start = -1
+
+
+func _blocks_light(cell: Vector2i) -> bool:
+	var c := _char_at(cell)
+	return c == "#" or (c == "X" and not door_open)
