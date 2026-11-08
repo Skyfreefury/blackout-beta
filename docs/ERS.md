@@ -157,5 +157,11 @@ Estas funciones quedan para ampliaciones posteriores:
 | 3 | Bucle completo: generadores, derribo, salida, pantallas | 2 semanas |
 | 4 | Arte final, sonido y pruebas con amigos | 2 semanas |
 
-## 8. Decisiones abiertas
+## 8. Estado
+| Fase | Estado | Pendiente |
+|---|---|---|
+| 1 | Hecha. Pruebas automáticas: luz, oscuridad, lámpara y persecución. | Prueba manual del control. |
+| 2 | Hecha. Pruebas con 2 instancias en el mismo PC: movimiento, pila y derribo sincronizados. | Prueba entre 2 PCs reales. RF-06 opciones, RF-07 pausa (Escape sale al menú), RNF-06 validar velocidades. |
+
+## 9. Decisiones abiertas
 - Nombre definitivo del monstruo.

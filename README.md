@@ -7,6 +7,19 @@ Los jugadores recorren un hospital abandonado a oscuras para reactivar 3 generad
 ## Documentación
 - [ERS](docs/ERS.md): requisitos de la versión mínima jugable.
 
+## Jugar en red
+1. El anfitrión pulsa Crear partida. Su IP local se ve con `ipconfig` (IPv4).
+2. Los demás escriben esa IP y pulsan Unirse.
+3. Fuera de la red local, el anfitrión debe abrir el puerto UDP 7777 en su router.
+
+Controles: WASD mover, ratón apuntar, Mayús correr, F linterna, E coger pila, R reiniciar (anfitrión), Escape salir.
+
+## Pruebas automáticas
+```bash
+godot --headless --path . res://scenes/main.tscn -- --scenario=lit
+```
+Escenarios: `lit`, `dark`, `chase`, `lamp`. Opciones de red en `scripts/debug_run.gd`.
+
 ## Ramas
 - `main`: versiones estables y probadas.
 - `develop`: trabajo en curso. Se fusiona en `main` al cerrar cada fase.

@@ -11,12 +11,13 @@ config_version=5
 [application]
 
 config/name="Blackout"
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/menu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [autoload]
 
 Controls="*res://scripts/controls.gd"
+Net="*res://scripts/net.gd"
 
 [display]
 

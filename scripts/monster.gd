@@ -1,6 +1,7 @@
 class_name Monster
 extends CharacterBody2D
 ## El Nonato: se congela si cualquier luz lo ilumina y caza a oscuras.
+## Existe en todos los equipos con el mismo nombre; la autoridad es el anfitrión.
 
 const SPEED := 110.0
 const RETREAT_SPEED := 66.0
@@ -26,12 +27,16 @@ var _target: Player
 
 
 func _physics_process(delta: float) -> void:
-	frozen = _is_lit()
+	# Solo el anfitrión mueve al monstruo. Los demás reciben posición y estado.
+	if multiplayer.is_server():
+		frozen = _is_lit()
 	if frozen:
 		velocity = Vector2.ZERO
 		sprite.position = Vector2(randi_range(-1, 1), randi_range(-1, 1))
 		return
 	sprite.position = Vector2.ZERO
+	if not multiplayer.is_server():
+		return
 	if _retreat_timer > 0.0:
 		_retreat_timer -= delta
 		_retreat()
