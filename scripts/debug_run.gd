@@ -120,6 +120,21 @@ func _setup(main: Node) -> void:
 			player.start_interact()
 		"bleed":
 			player.hit()
+		"trap":
+			# El generador 1 se repara con el monstruo dentro de la luz de una lámpara.
+			monster.global_position = level.cell_center(Vector2i(6, 10))
+			player.light_on = false
+			player.global_position = level.cell_center(Vector2i(29, 16))
+			await _wait(2)
+			main.generators[0].progress = Generator.REPAIR_TIME
+			main.generators[0].repaired = true
+		"safe":
+			# Jugador sin linterna bajo una lámpara encendida: el monstruo no debe alcanzarle.
+			main.generators[0].progress = Generator.REPAIR_TIME
+			main.generators[0].repaired = true
+			player.light_on = false
+			player.global_position = level.cell_center(Vector2i(5, 9))
+			monster.global_position = level.cell_center(Vector2i(12, 16))
 	player.camera.reset_smoothing()
 
 
@@ -127,10 +142,11 @@ func _report(main: Node) -> void:
 	var monster: Monster = main.monster
 	var p: Player = main.player
 	var gens := (main.generators as Array).filter(func(g): return g.repaired).size()
-	var line := "RESULT id=%d scenario=%s frozen=%s monster_moved=%.1f downed=%s dead=%s escaped=%s downs=%d battery=%.1f walked=%.1f batteries=%d gens=%d door=%s ended=%s players=%d" % [
+	var line := "RESULT id=%d scenario=%s frozen=%s monster_in_light=%s monster_moved=%.1f downed=%s dead=%s escaped=%s downs=%d battery=%.1f walked=%.1f batteries=%d gens=%d door=%s ended=%s players=%d" % [
 		multiplayer.get_unique_id(),
 		_args.get("scenario", "-"),
 		monster.frozen,
+		main.level.is_lamp_zone(monster.global_position),
 		monster.global_position.distance_to(_monster_start),
 		p.is_down, p.is_dead, p.escaped, p.down_count,
 		p.battery,

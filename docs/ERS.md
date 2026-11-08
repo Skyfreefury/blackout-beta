@@ -28,7 +28,7 @@ Core Keeper y Soul Knight (vista y escala del pixel art), Lethal Company (tensi�
 1. El anfitrión crea la sala. Los demás se unen con su IP.
 2. Todos aparecen en la entrada de urgencias del hospital con la linterna cargada al 100%.
 3. El grupo busca y repara 3 generadores. Cada reparación tarda 10 s manteniendo la tecla de interactuar y hace ruido.
-4. Cada generador reparado enciende las luces fijas de su zona. En esas zonas el monstruo queda paralizado.
+4. Cada generador reparado enciende las luces fijas de su zona. El monstruo no entra en esa luz y, si se enciende con él dentro, sale de ella. Solo las linternas lo congelan.
 5. Con los 3 generadores activos se abre la puerta de salida.
 6. Se gana si al menos 1 jugador cruza la salida. Se pierde si todos mueren.
 

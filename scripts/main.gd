@@ -62,6 +62,7 @@ func _spawn_world() -> void:
 		var lamp := Lamp.new()
 		lamp.position = entry[0]
 		lamp.generator = by_zone.get(entry[1])
+		lamp.level = level
 		entities.add_child(lamp)
 	for i in level.battery_spawns.size():
 		var pickup := BatteryPickup.new()

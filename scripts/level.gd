@@ -33,8 +33,19 @@ var door_open := false
 ## bloqueadas para que su cuerpo de 28 px no se enganche en las esquinas.
 var monster_grid := AStarGrid2D.new()
 
+## Margen alrededor de la luz de una lámpara para que el cuerpo del monstruo no la roce.
+const ZONE_MARGIN := 14.0
+
 var _rows := PackedStringArray()
 var _door_cells: Array[Vector2i] = []
+## Casillas bloqueadas por el propio mapa para el monstruo (paredes y su margen).
+var _static_solid := {}
+## Casillas libres del mapa, para deambular.
+var _open_cells: Array[Vector2i] = []
+## Lámparas encendidas: id -> [centro, radio de luz].
+var _lamp_zones := {}
+## Casillas tapadas por la luz de alguna lámpara: casilla -> número de lámparas.
+var _zone_cells := {}
 
 
 func build() -> void:
@@ -200,6 +211,89 @@ func _build_monster_grid() -> void:
 			var cell := Vector2i(x, y)
 			if _near_blocking(cell):
 				monster_grid.set_point_solid(cell)
+				_static_solid[cell] = true
+			else:
+				_open_cells.append(cell)
+
+
+## Marca o desmarca la luz de una lámpara como zona prohibida para el monstruo.
+## La luz no atraviesa paredes, así que solo cuentan las casillas que la lámpara ve.
+func set_lamp_zone(id: int, center: Vector2, radius: float, active: bool) -> void:
+	if active == _lamp_zones.has(id):
+		return
+	var cells := _lit_cells(center, radius + ZONE_MARGIN)
+	if active:
+		_lamp_zones[id] = [center, radius]
+		for c in cells:
+			_zone_cells[c] = _zone_cells.get(c, 0) + 1
+			monster_grid.set_point_solid(c)
+	else:
+		_lamp_zones.erase(id)
+		for c in cells:
+			_zone_cells[c] = _zone_cells.get(c, 1) - 1
+			if _zone_cells[c] <= 0:
+				_zone_cells.erase(c)
+				if not _static_solid.has(c):
+					monster_grid.set_point_solid(c, false)
+
+
+## True si la luz de alguna lámpara encendida llega a ese punto.
+func is_lamp_zone(pos: Vector2) -> bool:
+	var cell := world_to_cell(pos)
+	for zone: Array in _lamp_zones.values():
+		if pos.distance_to(zone[0]) <= zone[1] and _grid_sight(world_to_cell(zone[0]), cell):
+			return true
+	return false
+
+
+## Centro de la casilla libre más cercana fuera de toda luz de lámpara.
+func nearest_dark_point(from: Vector2) -> Vector2:
+	var start := world_to_cell(from)
+	var seen := {start: true}
+	var queue: Array[Vector2i] = [start]
+	while not queue.is_empty() and seen.size() < 600:
+		var cell: Vector2i = queue.pop_front()
+		if not _zone_cells.has(cell) and not _static_solid.has(cell) \
+				and not is_lamp_zone(cell_center(cell)):
+			return cell_center(cell)
+		for d: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var n := cell + d
+			if not seen.has(n) and _char_at(n) != "#":
+				seen[n] = true
+				queue.append(n)
+	return from
+
+
+## Punto al azar donde el monstruo puede estar.
+func random_monster_point() -> Vector2:
+	for i in 20:
+		var cell: Vector2i = _open_cells.pick_random()
+		if not _zone_cells.has(cell):
+			return cell_center(cell)
+	return monster_spawn
+
+
+func _lit_cells(center: Vector2, radius: float) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	var origin := world_to_cell(center)
+	var r := ceili(radius / TILE)
+	for dy in range(-r, r + 1):
+		for dx in range(-r, r + 1):
+			var c := origin + Vector2i(dx, dy)
+			if monster_grid.is_in_boundsv(c) and cell_center(c).distance_to(center) <= radius \
+					and _grid_sight(origin, c):
+				cells.append(c)
+	return cells
+
+
+## Línea de visión por casillas: ninguna pared entre las dos.
+func _grid_sight(a: Vector2i, b: Vector2i) -> bool:
+	var steps := maxi(absi(b.x - a.x), absi(b.y - a.y))
+	for i in range(1, steps):
+		var p := Vector2(a).lerp(Vector2(b), float(i) / steps).round()
+		if _char_at(Vector2i(p)) == "#":
+			return false
+	return true
 
 
 func _near_blocking(cell: Vector2i) -> bool:

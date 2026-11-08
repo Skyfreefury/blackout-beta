@@ -103,18 +103,50 @@ def recolor(img: Image.Image, mapping: dict[str, str]) -> Image.Image:
     return out
 
 
-def step_frame(base: Image.Image, frame: int) -> Image.Image:
-    """Ciclo de paso a partir de una sola pose: el cuerpo sube 1 px y una pierna se acorta."""
-    if frame % 2 == 0:
-        return base.copy()
-    legs_top = base.height - 7
-    mid = base.width // 2
-    out = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    out.alpha_composite(base.crop((0, 0, base.width, legs_top)), (0, -1))
-    lifted = (0, mid) if frame == 1 else (mid, base.width)
-    for x0, x1 in ((0, mid), (mid, base.width)):
-        piece = base.crop((x0, legs_top, x1, base.height))
-        out.alpha_composite(piece, (x0, legs_top - (1 if (x0, x1) == lifted else 0)))
+# Piernas de cada vista medidas sobre los sprites de 16x24: fila donde empiezan,
+# fila del pie y columna izquierda de cada pierna (2 px de ancho).
+LEGS = {
+    "front": {"top": 18, "foot": 22, "x": (6, 10)},
+    "back": {"top": 16, "foot": 22, "x": (5, 8)},
+    "side": {"top": 15, "foot": 22, "x": (3, 4)},
+}
+PANTS_DARK, PANTS_LIGHT, SHOE = "scrubs", "light", "white"
+
+
+def _leg(layer: Image.Image, x: int, top: int, foot: int, dx_at_foot: int, color: str) -> None:
+    """Pierna de 2 px que se inclina dx_at_foot píxeles en el pie. El último píxel es el zapato."""
+    for y in range(top, foot + 1):
+        t = (y - top) / max(1, foot - top)
+        lean = round(dx_at_foot * t)
+        shade = SHOE if y == foot else color
+        for i in range(2):
+            layer.putpixel((x + i + lean, y), P[shade] + (255,))
+
+
+def step_frame(view: str, base: Image.Image, frame: int) -> Image.Image:
+    """Ciclo de paso de 4 fotogramas a partir de una pose: se borran las piernas y se redibujan.
+    Fotogramas 0 y 2: piernas juntas. 1 y 3: zancada alterna y el cuerpo sube 1 px."""
+    leg = LEGS[view]
+    top, foot = leg["top"], leg["foot"]
+    stride = frame % 2 == 1
+    lift = 1 if stride else 0
+    body = base.crop((0, 0, base.width, top))
+    legs = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    left, right = leg["x"]
+    if view == "side":
+        # De lado: una pierna adelante y otra atrás; cambian de color para que se note cuál avanza.
+        front_color, back_color = (PANTS_LIGHT, PANTS_DARK) if frame == 1 else (PANTS_DARK, PANTS_LIGHT)
+        reach = 2 if stride else 0
+        _leg(legs, left, top - lift, foot, -reach, back_color)
+        _leg(legs, right, top - lift, foot, reach, front_color)
+    else:
+        # De frente o espalda: la pierna que avanza se acorta 2 px (rodilla doblada).
+        left_foot = foot - (2 if frame == 1 else 0)
+        right_foot = foot - (2 if frame == 3 else 0)
+        _leg(legs, left, top - lift, left_foot, 0, PANTS_LIGHT)
+        _leg(legs, right, top - lift, right_foot, 0, PANTS_DARK)
+    out = outline(legs)
+    out.alpha_composite(body, (0, -lift))
     return out
 
 
@@ -134,10 +166,12 @@ def build_game_sprites(r: dict[str, Image.Image]) -> None:
     views = [r["player_front"], r["player_back"], r["player_side"]]
     for i, (dark, light) in enumerate(CLOTH_VARIANTS):
         sheet = Image.new("RGBA", (64, 72), (0, 0, 0, 0))
-        for row, view in enumerate(views):
-            colored = recolor(view, {CLOTH[0]: dark, CLOTH[1]: light})
+        for row, (view_name, view) in enumerate(zip(("front", "back", "side"), views)):
             for frame in range(4):
-                sheet.alpha_composite(step_frame(colored, frame), (frame * 16, row * 24))
+                # Se recolorea después de redibujar las piernas para que el pantalón cambie también.
+                step = step_frame(view_name, view, frame)
+                colored = recolor(step, {CLOTH[0]: dark, CLOTH[1]: light})
+                sheet.alpha_composite(colored, (frame * 16, row * 24))
         sheet.save(SPRITES / f"player_{i}.png")
     monster = Image.new("RGBA", (160, 40), (0, 0, 0, 0))
     for frame in range(4):
