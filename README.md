@@ -16,7 +16,7 @@ Controles: WASD mover, ratón apuntar, Mayús correr, F linterna, E coger pila, 
 
 ## Pruebas automáticas
 ```bash
-godot --headless --path . res://scenes/main.tscn -- --scenario=lit
+godot --headless --path . res://scenes/main.tscn -- --scenario=repair --nomonster --frames=700
 ```
 Escenarios del hospital: `repair`, `door`, `revive`, `bleed` (con `--nomonster`). Escenarios de luz con `--map=res://maps/test.txt`: `lit`, `dark`, `chase`, `lamp`. Todas las opciones en `scripts/debug_run.gd`.
 
