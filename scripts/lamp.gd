@@ -7,7 +7,9 @@ const SPRITE := preload("res://art/sprites/lamp.png")
 const NORMAL_COLOR := Color(1.0, 0.85, 0.6)
 const EMERGENCY_COLOR := Color(1.0, 0.3, 0.25)
 
+## Radio de la luz blanca fija. Las de emergencia usan uno menor para no cerrar pasos.
 @export var radius := 56.0
+const EMERGENCY_RADIUS := 40.0
 ## Generador que la enciende. Null: siempre encendida.
 var generator: Generator
 var level: Level
@@ -17,6 +19,8 @@ var _registered := false
 
 func _ready() -> void:
 	add_to_group("lamps")
+	if generator != null:
+		radius = EMERGENCY_RADIUS
 	texture = LightTextures.radial(radius)
 	shadow_enabled = true
 	color = NORMAL_COLOR if generator == null else EMERGENCY_COLOR

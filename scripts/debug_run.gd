@@ -128,6 +128,13 @@ func _setup(main: Node) -> void:
 			await _wait(2)
 			main.generators[0].progress = Generator.REPAIR_TIME
 			main.generators[0].repaired = true
+		"allon":
+			# Todas las luces encendidas: el monstruo debe seguir cruzando el hospital.
+			for gen: Generator in main.generators:
+				gen.progress = Generator.REPAIR_TIME
+				gen.repaired = true
+			player.light_on = false
+			player.global_position = level.cell_center(Vector2i(4, 24))
 		"safe":
 			# Jugador sin linterna bajo una lámpara encendida: el monstruo no debe alcanzarle.
 			main.generators[0].progress = Generator.REPAIR_TIME

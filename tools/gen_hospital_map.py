@@ -88,9 +88,9 @@ put(29, 34, "M")
 put(9, 6, "1")
 put(56, 6, "2")
 put(57, 37, "3")
-for x, y in ((5, 9), (14, 9), (9, 22)):
+for x, y in ((5, 9), (12, 12), (14, 23)):
     put(x, y, "4")
-for x, y in ((47, 9), (55, 12), (45, 23), (55, 23)):
+for x, y in ((47, 9), (55, 12), (45, 23), (56, 24)):
     put(x, y, "5")
 for x, y in ((48, 30), (54, 35), (10, 33)):
     put(x, y, "6")
@@ -125,6 +125,45 @@ def near_blocking(cell: tuple[int, int]) -> bool:
                if 0 <= x + dx < W and 0 <= y + dy < H)
 
 
+# Debe coincidir con scripts/lamp.gd (EMERGENCY_RADIUS * 0.9) y scripts/level.gd (ZONE_MARGIN).
+LAMP_ZONE_PX = 40 * 0.9 + 6
+TILE = 16
+
+
+def grid_sight(a: tuple[int, int], b: tuple[int, int]) -> bool:
+    steps = max(abs(b[0] - a[0]), abs(b[1] - a[1]))
+    for i in range(1, steps):
+        t = i / steps
+        x, y = round(a[0] + (b[0] - a[0]) * t), round(a[1] + (b[1] - a[1]) * t)
+        if grid[y][x] == "#":
+            return False
+    return True
+
+
+def lamp_zone_cells() -> set[tuple[int, int]]:
+    """Casillas que el monstruo evita con todas las luces de emergencia encendidas."""
+    cells = set()
+    r = int(LAMP_ZONE_PX // TILE) + 1
+    for lx, ly in find("4") + find("5") + find("6"):
+        for dy in range(-r, r + 1):
+            for dx in range(-r, r + 1):
+                c = (lx + dx, ly + dy)
+                if 0 <= c[0] < W and 0 <= c[1] < H and (dx * dx + dy * dy) ** 0.5 * TILE <= LAMP_ZONE_PX \
+                        and grid_sight((lx, ly), c):
+                    cells.add(c)
+    return cells
+
+
+# Un punto libre por sala y por paso entre zonas. Con todas las luces encendidas el monstruo
+# debe seguir llegando a todos: una luz nunca puede cerrar una puerta.
+MONSTER_TARGETS = {
+    "urgencias": (29, 10), "ala A": (9, 9), "puerta urgencias-ala A": (18, 9),
+    "ala B": (50, 11), "puerta urgencias-ala B": (41, 9), "pasillo oeste": (5, 16),
+    "pasillo este": (55, 16), "enfermería": (4, 24), "escaleras": (29, 22),
+    "rayos X": (54, 21), "morgue": (14, 29), "laboratorio": (29, 31), "calderas": (50, 33),
+}
+
+
 def validate() -> None:
     spawn = find("P")[0]
     # Jugadores con la puerta abierta: todo lo transitable debe ser alcanzable.
@@ -137,10 +176,13 @@ def validate() -> None:
             f"generador {g} sin acceso"
     # Monstruo: rejilla reducida para su cuerpo grande, debe llegar a las 3 zonas y a la entrada.
     monster = find("M")[0]
-    hunt = bfs(monster, lambda c: not near_blocking(c))
-    targets = {"entrada": (29, 10), "ala A": (9, 9), "ala B": (50, 11), "pasillo": (5, 16), "calderas": (50, 33)}
-    for name, cell in targets.items():
-        assert cell in hunt, f"el monstruo no llega a {name} {cell}"
+    zones = lamp_zone_cells()
+    for lights_on in (False, True):
+        blocked = zones if lights_on else set()
+        hunt = bfs(monster, lambda c: not near_blocking(c) and c not in blocked)
+        for name, cell in MONSTER_TARGETS.items():
+            assert cell not in blocked, f"{name} {cell} queda dentro de una luz de emergencia"
+            assert cell in hunt, f"el monstruo no llega a {name} {cell} (luces {'encendidas' if lights_on else 'apagadas'})"
 
 
 def main() -> None:

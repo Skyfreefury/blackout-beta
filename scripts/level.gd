@@ -34,7 +34,7 @@ var door_open := false
 var monster_grid := AStarGrid2D.new()
 
 ## Margen alrededor de la luz de una lámpara para que el cuerpo del monstruo no la roce.
-const ZONE_MARGIN := 14.0
+const ZONE_MARGIN := 6.0
 
 var _rows := PackedStringArray()
 var _door_cells: Array[Vector2i] = []
