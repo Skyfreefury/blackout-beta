@@ -26,7 +26,7 @@ const LIST := [
 	},
 	{
 		"name": "Técnico/a",
-		"pro": "Repara un 40% más rápido",
+		"pro": "Hace las tareas un 40% más rápido",
 		"con": "Se mueve un 10% más lento",
 		"repair": 1.4,
 		"walk": 0.9,

@@ -153,7 +153,7 @@ func can_act() -> bool:
 
 
 func is_repairing() -> bool:
-	return _server_target is Generator
+	return _server_target is Task
 
 
 func _physics_process(delta: float) -> void:
@@ -275,9 +275,9 @@ func _find_hold_target() -> Node:
 		if other != self and other.needs_work() \
 				and global_position.distance_to(other.global_position) <= REVIVE_RANGE:
 			return other
-	for gen: Generator in get_tree().get_nodes_in_group("generators"):
-		if gen.needs_work() and global_position.distance_to(gen.global_position) <= Generator.INTERACT_RANGE:
-			return gen
+	for task: Task in get_tree().get_nodes_in_group("tasks"):
+		if task.needs_work() and global_position.distance_to(task.global_position) <= Task.INTERACT_RANGE:
+			return task
 	return null
 
 
@@ -297,7 +297,7 @@ func _stop_hold() -> void:
 
 
 func _range_for(target: Node) -> float:
-	return REVIVE_RANGE if target is Player else Generator.INTERACT_RANGE
+	return REVIVE_RANGE if target is Player else Task.INTERACT_RANGE
 
 
 @rpc("any_peer", "call_local", "reliable")

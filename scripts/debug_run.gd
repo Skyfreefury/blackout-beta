@@ -114,14 +114,14 @@ func _setup(main: Node) -> void:
 				aim = Vector2(float(parts[0]), float(parts[1]))
 			player.aim_override = player.global_position + aim
 		"repair":
-			var gen: Generator = main.generators[0]
+			var gen: Task = main.tasks[0]
 			player.global_position = gen.global_position + Vector2(0, 14)
 			player.aim_override = gen.global_position
 			await _wait(2)
 			player.start_interact()
 		"door":
-			for gen: Generator in main.generators:
-				gen.progress = Generator.REPAIR_TIME
+			for gen: Task in main.tasks:
+				gen.progress = gen.hold_time()
 				gen.repaired = true
 			await _wait(5)
 			player.global_position = level.cell_center(Vector2i(29, 5))
@@ -161,19 +161,19 @@ func _setup(main: Node) -> void:
 			player.light_on = false
 			player.global_position = level.cell_center(Vector2i(29, 16))
 			await _wait(2)
-			main.generators[0].progress = Generator.REPAIR_TIME
-			main.generators[0].repaired = true
+			main.tasks[0].progress = main.tasks[0].hold_time()
+			main.tasks[0].repaired = true
 		"allon":
 			# Todas las luces encendidas: el monstruo debe seguir cruzando el hospital.
-			for gen: Generator in main.generators:
-				gen.progress = Generator.REPAIR_TIME
+			for gen: Task in main.tasks:
+				gen.progress = gen.hold_time()
 				gen.repaired = true
 			player.light_on = false
 			player.global_position = level.cell_center(Vector2i(4, 24))
 		"safe":
 			# Jugador sin linterna bajo una lámpara encendida: el monstruo no debe alcanzarle.
-			main.generators[0].progress = Generator.REPAIR_TIME
-			main.generators[0].repaired = true
+			main.tasks[0].progress = main.tasks[0].hold_time()
+			main.tasks[0].repaired = true
 			player.light_on = false
 			player.global_position = level.cell_center(Vector2i(5, 9))
 			monster.global_position = level.cell_center(Vector2i(12, 16))
@@ -188,7 +188,7 @@ func _physics_process(_delta: float) -> void:
 func _report(main: Node) -> void:
 	var monster: Monster = main.monster
 	var p: Player = main.player
-	var gens := (main.generators as Array).filter(func(g): return g.repaired).size()
+	var gens := (main.tasks as Array).filter(func(g): return g.repaired).size()
 	var line := "RESULT id=%d scenario=%s frozen=%s monster_in_light=%s monster_moved=%.1f downed=%s dead=%s escaped=%s downs=%d battery=%.1f walked=%.1f batteries=%d gens=%d door=%s ended=%s players=%d" % [
 		multiplayer.get_unique_id(),
 		_args.get("scenario", "-"),
@@ -204,8 +204,9 @@ func _report(main: Node) -> void:
 		main._ended,
 		get_tree().get_nodes_in_group("players").size(),
 	]
-	line += " role=%d gen0=%.2f battery_max=%.0f run=%.0f angle=%.0f" % [p.role, main.generators[0].progress if not main.generators.is_empty() else 0.0, p.battery_max, p.run_speed, p.light_angle]
-	line += " seed=%d gens_at=%s" % [main.level.map_seed, ",".join((main.generators as Array).map(func(g): return str(main.level.world_to_cell(g.global_position))))]
+	line += " role=%d gen0=%.2f battery_max=%.0f run=%.0f angle=%.0f" % [p.role, main.tasks[0].progress if not main.tasks.is_empty() else 0.0, p.battery_max, p.run_speed, p.light_angle]
+	line += " level=%d tasks=%s" % [Net.game_level, ",".join((main.tasks as Array).map(func(t): return t.kind))]
+	line += " seed=%d gens_at=%s" % [main.level.map_seed, ",".join((main.tasks as Array).map(func(g): return str(main.level.world_to_cell(g.global_position))))]
 	line += " monster_dist=%.0f watchers=%d vel=(%.0f,%.0f) target=%s" % [monster.global_position.distance_to(p.global_position), monster._watchers.size(), monster.velocity.x, monster.velocity.y, monster._target]
 	if _dummy != null:
 		line += " dummy_progress=%.2f" % _dummy.revive_progress

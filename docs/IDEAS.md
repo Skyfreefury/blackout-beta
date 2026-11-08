@@ -1,6 +1,6 @@
 # Ideas para próximas versiones
 
-Ideas anotadas el 2026-11-08. Implementado: roles y colocación aleatoria. El resto sigue pendiente.
+Ideas anotadas el 2026-11-08. Implementado: roles, colocación aleatoria y tareas por nivel. Pendiente: tamaño del mapa y número de monstruos por nivel, y el modo extracción.
 
 ## Mapas que cambian en cada partida
 | Opción | Qué cambia | Trabajo |
@@ -25,7 +25,9 @@ Colocación aleatoria implementada. El hospital marca 3 sitios por generador, 3 
 | 3 | 4 | Mediano | 2 |
 | 4 en adelante | +1 por nivel | Grande | +1 cada 2 niveles |
 
-- Necesita: tareas como objetos con el mismo sistema de "mantener E" que los generadores, y monstruos que no se estorben entre sí.
+- Implementado: catálogo de 10 en el hospital (3 generadores, 2 archivadores de 6 s, 2 ordenadores de 8 s, 3 válvulas de 5 s). Cada nivel deja nivel + 1 tareas. Ganar pasa al nivel siguiente y perder lo repite.
+- Pendiente: mapas más grandes y más monstruos por nivel. La llave y el ascensor necesitan inventario.
+- Necesitaba: tareas como objetos con el mismo sistema de "mantener E" que los generadores, y monstruos que no se estorben entre sí.
 
 ## Modo extracción con botín (extraction looter)
 - Encaja con el bucle actual. La salida ya es una extracción y las pilas ya son botín.
@@ -43,7 +45,7 @@ Cada jugador elige un rol en la sala de espera. Una ventaja y una desventaja por
 |---|---|---|
 | Enfermero/a | Reanima un 50% más rápido | Linterna con un 20% menos de batería |
 | Corredor/a | Corre un 20% más rápido y con más resistencia | Hace más ruido: el monstruo le prefiere |
-| Técnico/a | Repara generadores un 40% más rápido | Anda un 10% más lento |
+| Técnico/a | Hace las tareas un 40% más rápido | Anda un 10% más lento |
 | Vigía | Cono de linterna un 30% más ancho | Su linterna se gasta más rápido al apuntar al monstruo |
 
 Los porcentajes son de partida y se ajustan jugando.

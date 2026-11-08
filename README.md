@@ -2,7 +2,7 @@
 
 Juego cooperativo de terror para 1 a 4 jugadores, con vista desde arriba y arte pixel, hecho en Godot 4.7.2.
 
-Los jugadores recorren un hospital abandonado a oscuras para reactivar 3 generadores y escapar. Generadores, pilas y el punto de aparición del monstruo cambian de sitio en cada partida. El Nonato los persigue y solo se mueve cuando ninguna luz lo ilumina.
+Los jugadores recorren un hospital abandonado a oscuras para completar tareas y escapar. Cada nivel pide una tarea más (nivel 1: 2 tareas) sacada de un catálogo de 10: generadores, archivadores, ordenadores y válvulas. Tareas, pilas y el punto de aparición del monstruo cambian de sitio en cada partida. El Nonato los persigue y solo se mueve cuando ninguna luz lo ilumina.
 
 ## Documentación
 - [ERS](docs/ERS.md): requisitos de la versión mínima jugable.
@@ -15,13 +15,13 @@ Los jugadores recorren un hospital abandonado a oscuras para reactivar 3 generad
 
 Roles: en la sala de espera el botón Rol cambia entre enfermero/a, corredor/a, técnico/a y vigía. Cada uno tiene una ventaja y una desventaja.
 
-Controles: WASD mover, ratón apuntar, Q o clic derecho linterna (F también vale), E coger pila, mantener E para reparar generadores o reanimar, Espacio correr (Mayús también vale), Escape pausa, F11 pantalla completa, R otra partida (anfitrión, al terminar).
+Controles: WASD mover, ratón apuntar, Q o clic derecho linterna (F también vale), E coger pila, mantener E para hacer tareas o reanimar, Espacio correr (Mayús también vale), Escape pausa, F11 pantalla completa, R siguiente nivel tras ganar o repetir tras perder (anfitrión).
 
 ## Pruebas automáticas
 ```bash
 godot --headless --path . res://scenes/main.tscn -- --scenario=repair --nomonster --frames=700
 ```
-Escenarios del hospital: `repair`, `door`, `revive`, `bleed` (con `--nomonster`) y `lure`. `--seed=N` fija el reparto del mapa. `--role=N` elige el rol (0 enfermero/a, 1 corredor/a, 2 técnico/a, 3 vigía). Escenarios de luz con `--map=res://maps/test.txt`: `lit`, `dark`, `chase`, `lamp`. Todas las opciones en `scripts/debug_run.gd`.
+Escenarios del hospital: `repair`, `door`, `revive`, `bleed` (con `--nomonster`) y `lure`. `--seed=N` fija el reparto del mapa. `--level=N` deja N + 1 tareas; sin él quedan las 10. `--role=N` elige el rol (0 enfermero/a, 1 corredor/a, 2 técnico/a, 3 vigía). Escenarios de luz con `--map=res://maps/test.txt`: `lit`, `dark`, `chase`, `lamp`. Todas las opciones en `scripts/debug_run.gd`.
 
 ## Ramas
 - `main`: versiones estables y probadas.

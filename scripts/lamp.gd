@@ -11,7 +11,7 @@ const EMERGENCY_COLOR := Color(1.0, 0.3, 0.25)
 @export var radius := 56.0
 const EMERGENCY_RADIUS := 40.0
 ## Generador que la enciende. Null: siempre encendida.
-var generator: Generator
+var generator: Task
 var level: Level
 
 var _registered := false

@@ -74,19 +74,20 @@ func toggle_pause() -> void:
 %s" % [Roles.role_name(player.role), Roles.effects(player.role)]
 
 
-func show_end(victory: bool, time: float, survivors: PackedStringArray, is_host: bool) -> void:
+func show_end(victory: bool, time: float, survivors: PackedStringArray, is_host: bool, level: int) -> void:
 	_pause.visible = false
 	var minutes := int(time) / 60
 	var seconds := int(time) % 60
 	var lines := PackedStringArray([
-		"HABÉIS ESCAPADO" if victory else "NADIE HA SALIDO",
+		("NIVEL %d SUPERADO" % level) if victory else "NADIE HA SALIDO",
 		"Tiempo %d:%02d" % [minutes, seconds],
 	])
 	if victory:
 		lines.append("Supervivientes: " + ", ".join(survivors))
 	_end_text.text = "\n".join(lines)
 	_end_text.add_theme_color_override("font_color", STAMINA_COLOR if victory else ACCENT)
-	_end_hint.text = "R: otra partida   Esc: menú" if is_host else "Esperando al anfitrión   Esc: menú"
+	var next := ("R: nivel %d" % (level + 1)) if victory else ("R: repetir nivel %d" % level)
+	_end_hint.text = (next + "   Esc: menú") if is_host else "Esperando al anfitrión   Esc: menú"
 	_end.visible = true
 
 

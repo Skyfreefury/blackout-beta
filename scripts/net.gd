@@ -29,6 +29,8 @@ var bind_ip := ""
 var allow_teleport := false
 ## Semilla del mapa de la partida en curso. La elige el anfitrión en cada partida.
 var map_seed := 0
+## Nivel de la partida en curso. Cada nivel tiene una tarea más (nivel 1: 2 tareas).
+var game_level := 1
 
 var _loaded := {}
 var _in_game := false
@@ -86,13 +88,13 @@ func close() -> void:
 	_in_game = false
 
 
-## Solo el anfitrión: carga la escena de juego en todos los equipos.
-func start_game() -> void:
+## Solo el anfitrión: carga la escena de juego en todos los equipos con un mapa nuevo.
+func start_game(level := 1) -> void:
 	if not multiplayer.is_server():
 		return
 	_in_game = true
 	_loaded.clear()
-	_load_game.rpc(randi_range(1, 0x7fffffff))
+	_load_game.rpc(randi_range(1, 0x7fffffff), maxi(level, 1))
 
 
 ## Lo llama la escena de juego al terminar de montarse.
@@ -148,8 +150,9 @@ func _sync_players(list: Dictionary, role_list: Dictionary) -> void:
 
 
 @rpc("authority", "call_local", "reliable")
-func _load_game(seed_value: int) -> void:
+func _load_game(seed_value: int, level: int) -> void:
 	map_seed = seed_value
+	game_level = level
 	get_tree().change_scene_to_file(GAME_SCENE)
 
 

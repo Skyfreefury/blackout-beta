@@ -1,11 +1,11 @@
 extends Node2D
-## Escena de partida. Todos los equipos montan el mapa, lámparas, pilas, generadores y monstruo
+## Escena de partida. Todos los equipos montan el mapa, lámparas, pilas, tareas y monstruo
 ## con los mismos nombres. El anfitrión crea un jugador por conexión cuando todos han cargado,
-## abre la salida con los 3 generadores y decide el final.
+## abre la salida al completar todas las tareas y decide el final.
 
 const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const MONSTER_SCENE := preload("res://scenes/monster.tscn")
-const GENERATOR_SCENE := preload("res://scenes/generator.tscn")
+const TASK_SCENE := preload("res://scenes/task.tscn")
 const SPAWN_OFFSETS: Array[Vector2] = [Vector2(0, 0), Vector2(14, 0), Vector2(0, 14), Vector2(14, 14)]
 ## Distancia al monstruo a la que empieza a oírse el latido.
 const HEARTBEAT_RANGE := 220.0
@@ -13,11 +13,13 @@ const HEARTBEAT_RANGE := 220.0
 ## Jugador controlado en este equipo.
 var player: Player
 var monster: Monster
-var generators: Array[Generator] = []
+## Tareas de esta partida. Las primeras son los generadores, ordenados por zona.
+var tasks: Array[Task] = []
 var elapsed := 0.0
 
 var _started := false
 var _ended := false
+var _victory := false
 var _heartbeat: AudioStreamPlayer
 
 @onready var level: Level = $Level
@@ -33,6 +35,12 @@ func _ready() -> void:
 	# --seed=N fija el reparto en pruebas lanzadas sin menú.
 	var seed_arg := _user_arg("seed")
 	level.map_seed = int(seed_arg) if not seed_arg.is_empty() else Net.map_seed
+	# Desde el menú: nivel + 1 tareas. Pruebas sin menú: todas las tareas, salvo --level=N.
+	var level_arg := _user_arg("level")
+	if not level_arg.is_empty():
+		Net.game_level = maxi(int(level_arg), 1)
+	if not level_arg.is_empty() or not Net.players.is_empty():
+		level.task_count = Net.game_level + 1
 	level.build()
 	_spawn_world()
 	Sfx.make_loop(self, "ambient_loop", -8.0).play()
@@ -56,14 +64,16 @@ func _ready() -> void:
 
 func _spawn_world() -> void:
 	var by_zone := {}
-	for i in level.generator_spawns.size():
-		var gen: Generator = GENERATOR_SCENE.instantiate()
-		gen.name = "Generator%d" % i
-		gen.position = level.generator_spawns[i][0]
-		gen.zone = level.generator_spawns[i][1]
-		entities.add_child(gen)
-		generators.append(gen)
-		by_zone[gen.zone] = gen
+	for i in level.task_spawns.size():
+		var task: Task = TASK_SCENE.instantiate()
+		task.name = "Task%d" % i
+		task.position = level.task_spawns[i][0]
+		task.kind = level.task_spawns[i][1]
+		task.zone = level.task_spawns[i][2]
+		entities.add_child(task)
+		tasks.append(task)
+		if task.zone > 0:
+			by_zone[task.zone] = task
 	for entry in level.lamp_spawns:
 		var lamp := Lamp.new()
 		lamp.position = entry[0]
@@ -91,21 +101,21 @@ func _physics_process(delta: float) -> void:
 	_update_heartbeat()
 	if not multiplayer.is_server():
 		return
-	if not level.door_open and not generators.is_empty() and generators.all(func(g): return g.repaired):
+	if not level.door_open and not tasks.is_empty() and tasks.all(func(t): return t.repaired):
 		_open_door.rpc()
 	_check_end()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("restart") and multiplayer.is_server() and (_ended or not Net.is_online()):
-		Net.start_game()
+		Net.start_game(Net.game_level + 1 if _victory else Net.game_level)
 	elif event.is_action_pressed("ui_cancel") and not _ended:
 		hud.toggle_pause()
 
 
 func _on_all_loaded() -> void:
 	var synced: Array[Node] = [monster]
-	synced.append_array(generators)
+	synced.append_array(tasks)
 	for node in synced:
 		node.get_node("Sync").public_visibility = true
 	var ids := Net.players.keys()
@@ -181,12 +191,20 @@ func _update_heartbeat() -> void:
 
 
 func _objective_text() -> String:
-	if generators.is_empty():
+	if tasks.is_empty():
 		return ""
+	var title := "Nivel %d" % Net.game_level
 	if level.door_open:
-		return "Escapa por la salida"
-	var done := generators.filter(func(g): return g.repaired).size()
-	return "Generadores %d/%d" % [done, generators.size()]
+		return title + "\nEscapa por la salida"
+	var pending := tasks.filter(func(t): return not t.repaired)
+	var lines := PackedStringArray(["%s   Tareas %d/%d" % [title, tasks.size() - pending.size(), tasks.size()]])
+	# Tareas iguales en una línea: "Reparar el generador x2".
+	var counts := {}
+	for t: Task in pending:
+		counts[t.label()] = counts.get(t.label(), 0) + 1
+	for label: String in counts:
+		lines.append("- " + label + (" x%d" % counts[label] if counts[label] > 1 else ""))
+	return "\n".join(lines)
 
 
 @rpc("authority", "call_local", "reliable")
@@ -212,7 +230,8 @@ func _check_end() -> void:
 @rpc("authority", "call_local", "reliable")
 func _end_game(victory: bool, time: float, survivors: PackedStringArray) -> void:
 	_ended = true
-	hud.show_end(victory, time, survivors, multiplayer.is_server())
+	_victory = victory
+	hud.show_end(victory, time, survivors, multiplayer.is_server(), Net.game_level)
 
 
 func _on_peer_left(id: int) -> void:

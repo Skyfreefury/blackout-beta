@@ -8,9 +8,11 @@ Leyenda (la misma que lee scripts/level.gd):
   c  camilla  w  silla de ruedas  i  incubadora  t  mesa   (obstáculos)
   P  jugadores  M  monstruo  B  pila
   1-3  generador de la zona   4-6  lámpara de la zona 1-3 (se enciende al repararlo)
+  a  archivador   o  ordenador   v  válvula   (tareas de mantener E)
 
 Generadores, monstruo y pilas tienen varios sitios candidatos. scripts/level.gd elige
 uno de cada generador y del monstruo, y 8 pilas, con la semilla de la partida.
+Luego deja nivel + 1 tareas del catálogo: los 3 generadores y las 7 tareas a, o, v.
 """
 from collections import deque
 from pathlib import Path
@@ -95,6 +97,13 @@ for x, y in ((56, 6), (52, 19), (43, 25)):
     put(x, y, "2")
 for x, y in ((57, 37), (14, 38), (45, 27)):
     put(x, y, "3")
+# Resto del catálogo de tareas, pegado a paredes y lejos de las puertas.
+for x, y in ((6, 19), (34, 19)):
+    put(x, y, "a")                       # archivadores de enfermería y escaleras
+for x, y in ((32, 5), (30, 38)):
+    put(x, y, "o")                       # ordenadores de urgencias y laboratorio
+for x, y in ((58, 30), (18, 36), (41, 37)):
+    put(x, y, "v")                       # válvulas del sótano
 for x, y in ((5, 9), (12, 12), (14, 23)):
     put(x, y, "4")
 for x, y in ((47, 9), (55, 12), (45, 23), (56, 24)):
@@ -106,7 +115,7 @@ for x, y in ((10, 16), (48, 16), (4, 21), (46, 24), (4, 36), (25, 20), (37, 7), 
     put(x, y, "B")
 
 WALKABLE = set(".,ESPMB456")
-BLOCKING = set("#Xciwt123")
+BLOCKING = set("#Xciwt123aov")
 
 
 def find(c: str) -> list[tuple[int, int]]:
@@ -179,10 +188,10 @@ def validate() -> None:
     unreachable = [c for c in find(".") + find(",") if c not in walk]
     assert not unreachable, f"suelo inalcanzable: {unreachable[:5]}"
     # Todos los candidatos cuentan como colocados a la vez: es el caso con más bloqueos.
-    for g in "123":
+    for g in "123aov":
         for gx, gy in find(g):
             assert any((gx + dx, gy + dy) in walk for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))), \
-                f"generador {g} en {(gx, gy)} sin acceso"
+                f"tarea {g} en {(gx, gy)} sin acceso"
     lost = [c for c in find("B") + find("M") if c not in walk]
     assert not lost, f"pila o monstruo inalcanzable: {lost}"
     # Monstruo: rejilla reducida para su cuerpo grande. Desde cada sitio donde puede aparecer

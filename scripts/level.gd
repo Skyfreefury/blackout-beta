@@ -22,7 +22,7 @@ const TILES_TEXTURE := preload("res://art/sprites/tiles.png")
 ## Capa de física de los obstáculos: frenan el paso pero no cortan la luz.
 const OBSTACLE_LAYER := 16
 ## Caracteres que el monstruo trata como bloqueo al planear su camino.
-const MONSTER_BLOCKING := "#XEciwt123"
+const MONSTER_BLOCKING := "#XEciwt123aov"
 
 @export_file("*.txt") var map_path := "res://maps/hospital.txt"
 ## Semilla del reparto de objetos. El anfitrión la elige y la envía, así todos ven el mismo mapa.
@@ -35,8 +35,10 @@ var monster_spawn := Vector2.ZERO
 var battery_spawns: Array[Vector2] = []
 ## Lámparas como pares [posición, zona]. Zona 0: siempre encendida.
 var lamp_spawns: Array = []
-## Generadores como pares [posición, zona].
-var generator_spawns: Array = []
+## Tareas como [posición, tipo, zona]. Primero los generadores por zona, luego el resto.
+var task_spawns: Array = []
+## Tareas que se quedan en el mapa. -1 deja todas las del catálogo.
+var task_count := -1
 var door_open := false
 ## Rejilla de caminos del monstruo. Las casillas junto a paredes cuentan como
 ## bloqueadas para que su cuerpo de 28 px no se enganche en las esquinas.
@@ -72,14 +74,14 @@ func build() -> void:
 	for y in size.y:
 		for x in size.x:
 			_place(Vector2i(x, y))
-	# Orden por zona: generators[0] es siempre el de la zona 1, esté donde esté.
-	generator_spawns.sort_custom(func(a: Array, b: Array) -> bool: return a[1] < b[1])
+	# Generadores primero y por zona: tasks[0] es el de la zona 1 si está en el mapa.
+	task_spawns.sort_custom(func(a: Array, b: Array) -> bool: return _task_order(a) < _task_order(b))
 	_build_occluders()
 	_build_monster_grid()
 
 
 ## Reparte generadores, monstruo y pilas entre sus sitios candidatos según map_seed.
-## Los candidatos descartados pasan a ser suelo antes de construir el mapa.
+## Después deja task_count tareas del catálogo. Lo descartado pasa a ser suelo antes de construir.
 func _pick_spawns() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = map_seed
@@ -94,14 +96,38 @@ func _pick_spawns() -> void:
 	for c: String in found:
 		var cells: Array = found[c]
 		var keep := 1 if c in SINGLE_PICKS else BATTERY_COUNT
-		# Fisher-Yates con el generador propio: mismo orden en todos los equipos.
-		for i in range(cells.size() - 1, 0, -1):
-			var j := rng.randi_range(0, i)
-			var tmp: Vector2i = cells[i]
-			cells[i] = cells[j]
-			cells[j] = tmp
-		for cell: Vector2i in cells.slice(keep):
-			_set_char(cell, "," if _touches(cell, ",") else ".")
+		_shuffle(cells, rng)
+		_clear_cells(cells.slice(keep))
+	# Catálogo de tareas: los generadores que quedan y los demás símbolos de tarea.
+	if task_count < 0:
+		return
+	var tasks: Array = []
+	for y in size.y:
+		for x in size.x:
+			var c := _rows[y][x]
+			if c in ["1", "2", "3"] or Task.SYMBOLS.has(c):
+				tasks.append(Vector2i(x, y))
+	_shuffle(tasks, rng)
+	_clear_cells(tasks.slice(task_count))
+
+
+## Fisher-Yates con el generador propio: mismo orden en todos los equipos.
+func _shuffle(cells: Array, rng: RandomNumberGenerator) -> void:
+	for i in range(cells.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp: Vector2i = cells[i]
+		cells[i] = cells[j]
+		cells[j] = tmp
+
+
+## Los sitios descartados pasan a ser suelo del mismo tipo que el de alrededor.
+func _clear_cells(cells: Array) -> void:
+	for cell: Vector2i in cells:
+		_set_char(cell, "," if _touches(cell, ",") else ".")
+
+
+func _task_order(entry: Array) -> int:
+	return entry[2] if entry[2] > 0 else 10 + Task.KINDS.keys().find(entry[1])
 
 
 func _set_char(cell: Vector2i, c: String) -> void:
@@ -182,7 +208,8 @@ func _place(cell: Vector2i) -> void:
 		"M": monster_spawn = center
 		"B": battery_spawns.append(center)
 		"L": lamp_spawns.append([center, 0])
-		"1", "2", "3": generator_spawns.append([center, int(c)])
+		"1", "2", "3": task_spawns.append([center, "generator", int(c)])
+		"a", "o", "v": task_spawns.append([center, Task.SYMBOLS[c], 0])
 		"4", "5", "6": lamp_spawns.append([center, int(c) - 3])
 
 

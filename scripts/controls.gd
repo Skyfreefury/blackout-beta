@@ -19,7 +19,7 @@ const MOUSE := {
 	"toggle_light": [MOUSE_BUTTON_RIGHT],
 }
 ## Texto de ayuda que muestran la pausa y el README.
-const HELP := "WASD mover   RATÓN apuntar\nQ o clic derecho linterna\nE coger pila (mantener: reparar y reanimar)\nESPACIO correr   F11 pantalla completa"
+const HELP := "WASD mover   RATÓN apuntar\nQ o clic derecho linterna\nE coger pila (mantener: tareas y reanimar)\nESPACIO correr   F11 pantalla completa"
 
 
 func _ready() -> void:
