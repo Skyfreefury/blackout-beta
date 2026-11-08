@@ -27,6 +27,8 @@ var last_error := ""
 var bind_ip := ""
 ## Desactiva la validación de movimiento. Solo para pruebas automáticas que teletransportan.
 var allow_teleport := false
+## Semilla del mapa de la partida en curso. La elige el anfitrión en cada partida.
+var map_seed := 0
 
 var _loaded := {}
 var _in_game := false
@@ -90,7 +92,7 @@ func start_game() -> void:
 		return
 	_in_game = true
 	_loaded.clear()
-	_load_game.rpc()
+	_load_game.rpc(randi_range(1, 0x7fffffff))
 
 
 ## Lo llama la escena de juego al terminar de montarse.
@@ -146,7 +148,8 @@ func _sync_players(list: Dictionary, role_list: Dictionary) -> void:
 
 
 @rpc("authority", "call_local", "reliable")
-func _load_game() -> void:
+func _load_game(seed_value: int) -> void:
+	map_seed = seed_value
 	get_tree().change_scene_to_file(GAME_SCENE)
 
 

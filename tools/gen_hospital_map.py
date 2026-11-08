@@ -8,6 +8,9 @@ Leyenda (la misma que lee scripts/level.gd):
   c  camilla  w  silla de ruedas  i  incubadora  t  mesa   (obstáculos)
   P  jugadores  M  monstruo  B  pila
   1-3  generador de la zona   4-6  lámpara de la zona 1-3 (se enciende al repararlo)
+
+Generadores, monstruo y pilas tienen varios sitios candidatos. scripts/level.gd elige
+uno de cada generador y del monstruo, y 8 pilas, con la semilla de la partida.
 """
 from collections import deque
 from pathlib import Path
@@ -84,17 +87,22 @@ for x in (25, 33):
 
 # Puntos de aparición, generadores, lámparas y pilas.
 put(29, 9, "P")
-put(29, 34, "M")
-put(9, 6, "1")
-put(56, 6, "2")
-put(57, 37, "3")
+for x, y in ((29, 34), (12, 30), (52, 36)):
+    put(x, y, "M")
+for x, y in ((9, 6), (13, 25), (3, 12)):
+    put(x, y, "1")
+for x, y in ((56, 6), (52, 19), (43, 25)):
+    put(x, y, "2")
+for x, y in ((57, 37), (14, 38), (45, 27)):
+    put(x, y, "3")
 for x, y in ((5, 9), (12, 12), (14, 23)):
     put(x, y, "4")
 for x, y in ((47, 9), (55, 12), (45, 23), (56, 24)):
     put(x, y, "5")
 for x, y in ((48, 30), (54, 35), (10, 33)):
     put(x, y, "6")
-for x, y in ((10, 16), (48, 16), (4, 21), (46, 24), (4, 36), (25, 20), (37, 7), (44, 30)):
+for x, y in ((10, 16), (48, 16), (4, 21), (46, 24), (4, 36), (25, 20), (37, 7), (44, 30),
+             (33, 11), (15, 7), (53, 7), (40, 16), (33, 30), (56, 21)):
     put(x, y, "B")
 
 WALKABLE = set(".,ESPMB456")
@@ -170,14 +178,17 @@ def validate() -> None:
     walk = bfs(spawn, lambda c: grid[c[1]][c[0]] in WALKABLE or grid[c[1]][c[0]] == "X")
     unreachable = [c for c in find(".") + find(",") if c not in walk]
     assert not unreachable, f"suelo inalcanzable: {unreachable[:5]}"
+    # Todos los candidatos cuentan como colocados a la vez: es el caso con más bloqueos.
     for g in "123":
-        gx, gy = find(g)[0]
-        assert any((gx + dx, gy + dy) in walk for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))), \
-            f"generador {g} sin acceso"
-    # Monstruo: rejilla reducida para su cuerpo grande, debe llegar a las 3 zonas y a la entrada.
-    monster = find("M")[0]
+        for gx, gy in find(g):
+            assert any((gx + dx, gy + dy) in walk for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))), \
+                f"generador {g} en {(gx, gy)} sin acceso"
+    lost = [c for c in find("B") + find("M") if c not in walk]
+    assert not lost, f"pila o monstruo inalcanzable: {lost}"
+    # Monstruo: rejilla reducida para su cuerpo grande. Desde cada sitio donde puede aparecer
+    # debe llegar a las 3 zonas y a la entrada.
     zones = lamp_zone_cells()
-    for lights_on in (False, True):
+    for monster, lights_on in ((m, on) for m in find("M") for on in (False, True)):
         blocked = zones if lights_on else set()
         hunt = bfs(monster, lambda c: not near_blocking(c) and c not in blocked)
         for name, cell in MONSTER_TARGETS.items():

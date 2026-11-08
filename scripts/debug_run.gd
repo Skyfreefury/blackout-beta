@@ -6,6 +6,7 @@ extends Node
 ##   --scenario=repair|door|revive|bleed    bucle de partida en el hospital
 ##   --scenario=trap|safe|allon|guard       luces de emergencia y vigilancia con linterna
 ##   --nomonster                            congela al monstruo
+##   --seed=N                               reparto de generadores, monstruo y pilas
 ##   --role=N                               rol del jugador local (índice de Roles.LIST)
 ## En red (lanzando el menú con --host=N o --join=IP):
 ##   --walk     el jugador local camina a la derecha
@@ -204,6 +205,7 @@ func _report(main: Node) -> void:
 		get_tree().get_nodes_in_group("players").size(),
 	]
 	line += " role=%d gen0=%.2f battery_max=%.0f run=%.0f angle=%.0f" % [p.role, main.generators[0].progress if not main.generators.is_empty() else 0.0, p.battery_max, p.run_speed, p.light_angle]
+	line += " seed=%d gens_at=%s" % [main.level.map_seed, ",".join((main.generators as Array).map(func(g): return str(main.level.world_to_cell(g.global_position))))]
 	line += " monster_dist=%.0f watchers=%d vel=(%.0f,%.0f) target=%s" % [monster.global_position.distance_to(p.global_position), monster._watchers.size(), monster.velocity.x, monster.velocity.y, monster._target]
 	if _dummy != null:
 		line += " dummy_progress=%.2f" % _dummy.revive_progress

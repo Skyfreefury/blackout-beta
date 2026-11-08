@@ -1,6 +1,6 @@
 # Ideas para próximas versiones
 
-Ideas anotadas el 2026-11-08. Los roles están implementados. El resto sigue pendiente.
+Ideas anotadas el 2026-11-08. Implementado: roles y colocación aleatoria. El resto sigue pendiente.
 
 ## Mapas que cambian en cada partida
 | Opción | Qué cambia | Trabajo |
@@ -9,7 +9,8 @@ Ideas anotadas el 2026-11-08. Los roles están implementados. El resto sigue pen
 | Salas intercambiables | El plano se mantiene; cada hueco recibe una sala de un catálogo (quirófano, morgue, farmacia...) | Medio |
 | Generación completa | Salas y pasillos nuevos cada vez | Alto |
 
-El anfitrión elige una semilla y la envía al resto, así todos generan el mismo mapa.
+Colocación aleatoria implementada. El hospital marca 3 sitios por generador, 3 para el monstruo y 14 para pilas.
+`scripts/level.gd` se queda con 1 de cada y 8 pilas. El anfitrión elige una semilla nueva en cada partida y la envía al resto, así todos ven el mismo mapa.
 `tools/gen_hospital_map.py` ya comprueba pasos y alcance del monstruo; serviría para validar cada mapa generado.
 
 ## Tareas por mapa y niveles

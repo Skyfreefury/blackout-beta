@@ -25,6 +25,8 @@ const OBSTACLE_LAYER := 16
 const MONSTER_BLOCKING := "#XEciwt123"
 
 @export_file("*.txt") var map_path := "res://maps/hospital.txt"
+## Semilla del reparto de objetos. El anfitrión la elige y la envía, así todos ven el mismo mapa.
+var map_seed := 0
 
 var tiles: TileMapLayer
 var size := Vector2i.ZERO
@@ -42,6 +44,10 @@ var monster_grid := AStarGrid2D.new()
 
 ## Margen alrededor de la luz de una lámpara para que el cuerpo del monstruo no la roce.
 const ZONE_MARGIN := 6.0
+## Pilas que aparecen por partida. El mapa marca más sitios candidatos con B.
+const BATTERY_COUNT := 8
+## Objetos con varios sitios candidatos en el mapa: se queda uno de cada.
+const SINGLE_PICKS := ["1", "2", "3", "M"]
 
 var _rows := PackedStringArray()
 var _door_cells: Array[Vector2i] = []
@@ -58,6 +64,7 @@ var _zone_cells := {}
 func build() -> void:
 	_rows = _load_rows(map_path)
 	size = Vector2i(_rows[0].length(), _rows.size())
+	_pick_spawns()
 	tiles = TileMapLayer.new()
 	tiles.name = "Tiles"
 	tiles.tile_set = _make_tile_set()
@@ -65,8 +72,48 @@ func build() -> void:
 	for y in size.y:
 		for x in size.x:
 			_place(Vector2i(x, y))
+	# Orden por zona: generators[0] es siempre el de la zona 1, esté donde esté.
+	generator_spawns.sort_custom(func(a: Array, b: Array) -> bool: return a[1] < b[1])
 	_build_occluders()
 	_build_monster_grid()
+
+
+## Reparte generadores, monstruo y pilas entre sus sitios candidatos según map_seed.
+## Los candidatos descartados pasan a ser suelo antes de construir el mapa.
+func _pick_spawns() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = map_seed
+	var found := {}
+	for y in size.y:
+		for x in size.x:
+			var c := _rows[y][x]
+			if c in SINGLE_PICKS or c == "B":
+				if not found.has(c):
+					found[c] = []
+				found[c].append(Vector2i(x, y))
+	for c: String in found:
+		var cells: Array = found[c]
+		var keep := 1 if c in SINGLE_PICKS else BATTERY_COUNT
+		# Fisher-Yates con el generador propio: mismo orden en todos los equipos.
+		for i in range(cells.size() - 1, 0, -1):
+			var j := rng.randi_range(0, i)
+			var tmp: Vector2i = cells[i]
+			cells[i] = cells[j]
+			cells[j] = tmp
+		for cell: Vector2i in cells.slice(keep):
+			_set_char(cell, "," if _touches(cell, ",") else ".")
+
+
+func _set_char(cell: Vector2i, c: String) -> void:
+	var row := _rows[cell.y]
+	_rows[cell.y] = row.substr(0, cell.x) + c + row.substr(cell.x + 1)
+
+
+func _touches(cell: Vector2i, c: String) -> bool:
+	for d: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		if _char_at(cell + d) == c:
+			return true
+	return false
 
 
 func cell_center(cell: Vector2i) -> Vector2:

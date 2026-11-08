@@ -30,6 +30,9 @@ func _ready() -> void:
 	var map_arg := _user_arg("map")
 	if not map_arg.is_empty():
 		level.map_path = map_arg
+	# --seed=N fija el reparto en pruebas lanzadas sin menú.
+	var seed_arg := _user_arg("seed")
+	level.map_seed = int(seed_arg) if not seed_arg.is_empty() else Net.map_seed
 	level.build()
 	_spawn_world()
 	Sfx.make_loop(self, "ambient_loop", -8.0).play()

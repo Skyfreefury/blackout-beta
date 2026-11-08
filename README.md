@@ -2,7 +2,7 @@
 
 Juego cooperativo de terror para 1 a 4 jugadores, con vista desde arriba y arte pixel, hecho en Godot 4.7.2.
 
-Los jugadores recorren un hospital abandonado a oscuras para reactivar 3 generadores y escapar. El Nonato los persigue y solo se mueve cuando ninguna luz lo ilumina.
+Los jugadores recorren un hospital abandonado a oscuras para reactivar 3 generadores y escapar. Generadores, pilas y el punto de aparición del monstruo cambian de sitio en cada partida. El Nonato los persigue y solo se mueve cuando ninguna luz lo ilumina.
 
 ## Documentación
 - [ERS](docs/ERS.md): requisitos de la versión mínima jugable.
@@ -21,7 +21,7 @@ Controles: WASD mover, ratón apuntar, Q o clic derecho linterna (F también val
 ```bash
 godot --headless --path . res://scenes/main.tscn -- --scenario=repair --nomonster --frames=700
 ```
-Escenarios del hospital: `repair`, `door`, `revive`, `bleed` (con `--nomonster`) y `lure`. `--role=N` elige el rol (0 enfermero/a, 1 corredor/a, 2 técnico/a, 3 vigía). Escenarios de luz con `--map=res://maps/test.txt`: `lit`, `dark`, `chase`, `lamp`. Todas las opciones en `scripts/debug_run.gd`.
+Escenarios del hospital: `repair`, `door`, `revive`, `bleed` (con `--nomonster`) y `lure`. `--seed=N` fija el reparto del mapa. `--role=N` elige el rol (0 enfermero/a, 1 corredor/a, 2 técnico/a, 3 vigía). Escenarios de luz con `--map=res://maps/test.txt`: `lit`, `dark`, `chase`, `lamp`. Todas las opciones en `scripts/debug_run.gd`.
 
 ## Ramas
 - `main`: versiones estables y probadas.
