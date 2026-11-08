@@ -1,7 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1_script"]
-[ext_resource type="Texture2D" path="res://art/sprites/player.png" id="2_sprite"]
+[ext_resource type="Texture2D" path="res://art/sprites/player_0.png" id="2_sprite"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_feet"]
 size = Vector2(10, 6)
@@ -13,15 +13,12 @@ properties/0/replication_mode = 1
 properties/1/path = NodePath("Flashlight:rotation")
 properties/1/spawn = true
 properties/1/replication_mode = 1
-properties/2/path = NodePath("Sprite:flip_h")
+properties/2/path = NodePath(".:light_on")
 properties/2/spawn = true
 properties/2/replication_mode = 2
-properties/3/path = NodePath(".:light_on")
+properties/3/path = NodePath(".:battery")
 properties/3/spawn = true
 properties/3/replication_mode = 2
-properties/4/path = NodePath(".:battery")
-properties/4/spawn = true
-properties/4/replication_mode = 2
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_server"]
 properties/0/path = NodePath(".:is_down")
@@ -52,6 +49,8 @@ script = ExtResource("1_script")
 [node name="Sprite" type="Sprite2D" parent="."]
 texture = ExtResource("2_sprite")
 offset = Vector2(0, -9)
+hframes = 4
+vframes = 3
 
 [node name="Shape" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_feet")

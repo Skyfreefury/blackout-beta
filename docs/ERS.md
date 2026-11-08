@@ -162,6 +162,7 @@ Estas funciones quedan para ampliaciones posteriores:
 |---|---|---|
 | 1 | Hecha. Pruebas automáticas: luz, oscuridad, lámpara y persecución. | Prueba manual del control. |
 | 2 | Hecha. Pruebas con 2 instancias en el mismo PC: movimiento, pila y derribo sincronizados. | Prueba entre 2 PCs reales. RF-06 opciones. RNF-06 validar velocidades. |
+| 4 | Hecha en parte. Sprites animados (jugador 4x3 fotogramas en 4 colores, monstruo 4 fotogramas), paredes con cara iluminada, 14 sonidos sintetizados (tools/gen_sounds.py), latido según distancia al monstruo, herramienta tools/pixelize.py para convertir dibujos a la paleta. | Gemini no genera imágenes en la cuenta gratuita (cuota 0). Arte dibujado a mano o con IA de pago, fuente pixel, opciones de volumen (RF-06) y pruebas con amigos. |
 | 3 | Hecha. Mapa del hospital (tools/gen_hospital_map.py), generadores, luces de zona, salida, reanimación, 2 derribos, muerte por desangrado, espectador, pausa (RF-07) y pantalla final. Pruebas: reparar, escapar, reanimar, segundo golpe y desangrado. | Prueba manual con 2 a 4 jugadores. El sótano está en el mismo plano que la planta baja, unido por casillas de escalera. |
 
 ## 9. Decisiones abiertas

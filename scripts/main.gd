@@ -7,6 +7,8 @@ const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const MONSTER_SCENE := preload("res://scenes/monster.tscn")
 const GENERATOR_SCENE := preload("res://scenes/generator.tscn")
 const SPAWN_OFFSETS: Array[Vector2] = [Vector2(0, 0), Vector2(14, 0), Vector2(0, 14), Vector2(14, 14)]
+## Distancia al monstruo a la que empieza a oírse el latido.
+const HEARTBEAT_RANGE := 220.0
 
 ## Jugador controlado en este equipo.
 var player: Player
@@ -16,6 +18,7 @@ var elapsed := 0.0
 
 var _started := false
 var _ended := false
+var _heartbeat: AudioStreamPlayer
 
 @onready var level: Level = $Level
 @onready var entities: Node2D = $Entities
@@ -29,6 +32,8 @@ func _ready() -> void:
 		level.map_path = map_arg
 	level.build()
 	_spawn_world()
+	Sfx.make_loop(self, "ambient_loop", -8.0).play()
+	_heartbeat = Sfx.make_loop(self, "heartbeat_loop")
 
 	# La posición inicial viaja en los datos de aparición: el sincronizador del
 	# jugador pertenece a su dueño y no la incluye al crearlo.
@@ -76,6 +81,7 @@ func _physics_process(delta: float) -> void:
 	elapsed += delta
 	hud.objective = _objective_text()
 	_follow_spectated()
+	_update_heartbeat()
 	if not multiplayer.is_server():
 		return
 	if not level.door_open and not generators.is_empty() and generators.all(func(g): return g.repaired):
@@ -98,7 +104,7 @@ func _on_all_loaded() -> void:
 	var ids := Net.players.keys()
 	ids.sort()
 	for i in ids.size():
-		spawner.spawn([ids[i], level.player_spawn + SPAWN_OFFSETS[i % SPAWN_OFFSETS.size()]])
+		spawner.spawn([ids[i], level.player_spawn + SPAWN_OFFSETS[i % SPAWN_OFFSETS.size()], i % 4])
 	_mark_started.rpc()
 
 
@@ -107,11 +113,12 @@ func _mark_started() -> void:
 	_started = true
 
 
-## Corre en todos los equipos con los datos [id, posición] que envía el anfitrión.
+## Corre en todos los equipos con los datos [id, posición, color] que envía el anfitrión.
 func _create_player(data: Array) -> Node:
 	var p: Player = PLAYER_SCENE.instantiate()
 	p.name = str(data[0])
 	p.position = data[1]
+	p.color_index = data[2] if data.size() > 2 else 0
 	p.level = level
 	return p
 
@@ -150,7 +157,24 @@ func _follow_spectated() -> void:
 			return
 
 
+## Latido más fuerte y rápido cuanto más cerca está el monstruo de la cámara activa.
+func _update_heartbeat() -> void:
+	var camera := get_viewport().get_camera_2d()
+	var dist := INF if camera == null else camera.global_position.distance_to(monster.global_position)
+	if dist >= HEARTBEAT_RANGE:
+		if _heartbeat.playing:
+			_heartbeat.stop()
+		return
+	var closeness := 1.0 - dist / HEARTBEAT_RANGE
+	_heartbeat.volume_db = lerpf(-24.0, 0.0, closeness)
+	_heartbeat.pitch_scale = 1.0 + 0.6 * closeness
+	if not _heartbeat.playing:
+		_heartbeat.play()
+
+
 func _objective_text() -> String:
+	if generators.is_empty():
+		return ""
 	if level.door_open:
 		return "Escapa por la salida"
 	var done := generators.filter(func(g): return g.repaired).size()
@@ -160,6 +184,7 @@ func _objective_text() -> String:
 @rpc("authority", "call_local", "reliable")
 func _open_door() -> void:
 	level.open_door()
+	Sfx.play_at("door_open", level.door_position())
 	hud.flash_message("La salida está abierta")
 
 

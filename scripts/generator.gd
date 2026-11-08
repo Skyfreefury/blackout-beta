@@ -12,15 +12,35 @@ var zone := 0
 var progress := 0.0
 var repaired := false
 
+var _motor: AudioStreamPlayer2D
+var _prev_progress := 0.0
+var _work_timer := 0.0
+var _was_repaired := false
+
 @onready var status_light: PointLight2D = $StatusLight
 
 
 func _ready() -> void:
 	add_to_group("generators")
 	status_light.texture = LightTextures.radial(10.0)
+	_motor = Sfx.make_loop_2d(self, "generator_loop", -4.0)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	# El motor suena mientras el progreso sube. El valor llega del anfitrión a saltos,
+	# así que se mantiene encendido 0,3 s tras cada subida.
+	if progress > _prev_progress:
+		_work_timer = 0.3
+	_work_timer = maxf(_work_timer - delta, 0.0)
+	var working := _work_timer > 0.0 and not repaired
+	if working and not _motor.playing:
+		_motor.play()
+	elif not working and _motor.playing:
+		_motor.stop()
+	_prev_progress = progress
+	if repaired and not _was_repaired:
+		Sfx.play_at("generator_on", global_position)
+	_was_repaired = repaired
 	if repaired:
 		status_light.color = REPAIRED_COLOR
 		status_light.energy = 0.8

@@ -165,6 +165,7 @@ func _place_center(panel: PanelContainer) -> void:
 func _button(text: String, callback: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
+	b.pressed.connect(Sfx.play_ui.bind("ui_click", -6.0))
 	b.pressed.connect(callback)
 	return b
 

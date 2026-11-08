@@ -27,6 +27,12 @@ const BLEED_OUT_TIME := 30.0
 ## Margen extra que acepta el anfitrión por el retraso de red al validar distancias.
 const NET_TOLERANCE := 10.0
 const WOUNDED_TINT := Color(1.0, 0.7, 0.7)
+const ANIM_FPS := 8.0
+const SHEET_PATH := "res://art/sprites/player_%d.png"
+## Filas de la hoja de sprites.
+const ROW_DOWN := 0
+const ROW_UP := 1
+const ROW_SIDE := 2
 
 var battery := BATTERY_MAX
 var stamina := STAMINA_MAX
@@ -54,6 +60,8 @@ var down_time := 0.0
 var revive_progress := 0.0
 
 var level: Level
+## Color del pijama (0 a 3), asignado por orden de llegada.
+var color_index := 0
 ## Punto al que apuntar en lugar del ratón. Lo usan las pruebas automáticas.
 var aim_override: Variant = null
 ## Dirección fija en lugar del teclado. La usan las pruebas automáticas.
@@ -65,6 +73,14 @@ var _exhausted := false
 ## Solo en el anfitrión: objetivo que este jugador dice estar trabajando.
 var _server_target: Node = null
 var _last_worked_frame := -10
+var _anim_time := 0.0
+var _last_pos := Vector2.ZERO
+# Valores del fotograma anterior para sonar solo en los cambios.
+var _prev_step := 0
+var _prev_light := true
+var _prev_battery := BATTERY_MAX
+var _prev_down := false
+var _prev_dead := false
 
 @onready var sprite: Sprite2D = $Sprite
 @onready var flashlight: PointLight2D = $Flashlight
@@ -82,7 +98,9 @@ func _ready() -> void:
 	add_to_group("players")
 	flashlight.texture = LightTextures.cone(LIGHT_RANGE, LIGHT_ANGLE)
 	glow.texture = LightTextures.radial(28.0)
+	sprite.texture = load(SHEET_PATH % clampi(color_index, 0, 3))
 	camera.enabled = is_local()
+	_last_pos = global_position
 
 
 func is_local() -> bool:
@@ -116,7 +134,7 @@ func _physics_process(delta: float) -> void:
 			_stop_hold()
 	if multiplayer.is_server():
 		_server_tick(delta)
-	_update_visuals()
+	_update_visuals(delta)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -270,7 +288,6 @@ func _move(delta: float) -> void:
 func _aim() -> void:
 	var target: Vector2 = aim_override if aim_override != null else get_global_mouse_position()
 	flashlight.rotation = (target - flashlight.global_position).angle()
-	sprite.flip_h = target.x < global_position.x
 
 
 func _drain_battery(delta: float) -> void:
@@ -281,7 +298,9 @@ func _drain_battery(delta: float) -> void:
 
 
 ## Corre en todos los equipos con los valores sincronizados.
-func _update_visuals() -> void:
+func _update_visuals(delta: float) -> void:
+	_animate(delta)
+	_play_sounds()
 	visible = is_active()
 	shape.disabled = not is_active()
 	glow.enabled = can_act()
@@ -293,6 +312,43 @@ func _update_visuals() -> void:
 		flashlight.energy = LIGHT_ENERGY
 	sprite.rotation_degrees = 90.0 if is_down else 0.0
 	sprite.modulate = WOUNDED_TINT if down_count > 0 else Color.WHITE
+
+
+## Elige fila según hacia dónde apunta la linterna y avanza el paso si se mueve.
+## Usa la posición recibida, así funciona igual para jugadores remotos.
+func _animate(delta: float) -> void:
+	var moved := global_position.distance_to(_last_pos) > 0.05 and can_act()
+	_last_pos = global_position
+	_anim_time = _anim_time + delta * ANIM_FPS if moved else 0.0
+	var facing := Vector2.from_angle(flashlight.rotation)
+	var row := ROW_SIDE
+	if absf(facing.x) < 0.6:
+		row = ROW_DOWN if facing.y > 0.0 else ROW_UP
+	sprite.flip_h = row == ROW_SIDE and facing.x < 0.0
+	var step := int(_anim_time) % 4 if moved else 0
+	sprite.frame = row * 4 + step
+	# Un paso suena cuando el pie toca el suelo (fotogramas 1 y 3).
+	if step != _prev_step and step % 2 == 1:
+		Sfx.play_at("step", global_position, -10.0)
+	_prev_step = step
+
+
+## Sonidos que se deducen de cambios en valores sincronizados, igual en todos los equipos.
+func _play_sounds() -> void:
+	if light_on != _prev_light and can_act():
+		Sfx.play_at("flashlight", global_position, -6.0)
+	if battery > _prev_battery + 10.0:
+		Sfx.play_at("battery", global_position, -4.0)
+	if is_down and not _prev_down:
+		Sfx.play_at("down", global_position)
+	elif _prev_down and not is_down and not is_dead:
+		Sfx.play_at("revive", global_position, -4.0)
+	if is_dead and not _prev_dead:
+		Sfx.play_at("death", global_position)
+	_prev_light = light_on
+	_prev_battery = battery
+	_prev_down = is_down
+	_prev_dead = is_dead
 
 
 @rpc("any_peer", "call_local", "reliable")

@@ -49,6 +49,12 @@ func _ready() -> void:
 		img.resize(img.get_width() * 4, img.get_height() * 4, Image.INTERPOLATE_NEAREST)
 		img.save_png(_args["shot"])
 	await _wait(int(_args.get("linger", "0")))
+	# Parar el audio antes de salir evita avisos de recursos sin liberar.
+	for node in get_tree().root.find_children("*", "AudioStreamPlayer", true, false):
+		node.stop()
+	for node in get_tree().root.find_children("*", "AudioStreamPlayer2D", true, false):
+		node.stop()
+	await get_tree().process_frame
 	get_tree().quit()
 
 
@@ -86,7 +92,12 @@ func _setup(main: Node) -> void:
 			monster.global_position = level.cell_center(Vector2i(4, 6))
 			player.aim_override = player.global_position + Vector2(-50, 0)
 		"spawn":
-			player.aim_override = player.global_position + Vector2(80, 30)
+			# --aim=dx,dy cambia hacia dónde apunta, relativo al jugador.
+			var aim := Vector2(80, 30)
+			if _args.has("aim"):
+				var parts: PackedStringArray = _args["aim"].split(",")
+				aim = Vector2(float(parts[0]), float(parts[1]))
+			player.aim_override = player.global_position + aim
 		"repair":
 			var gen: Generator = main.generators[0]
 			player.global_position = gen.global_position + Vector2(0, 14)

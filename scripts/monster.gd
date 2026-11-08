@@ -22,14 +22,48 @@ var _path_index := 0
 var _repath_timer := 0.0
 var _retreat_timer := 0.0
 var _target: Player
+var _anim_time := 0.0
+var _last_pos := Vector2.ZERO
 
 @onready var sprite: Sprite2D = $Sprite
+
+
+const FREEZE_SOUND_COOLDOWN := 2.0
+
+var _crawl_sound: AudioStreamPlayer2D
+var _was_frozen := false
+var _freeze_cooldown := 0.0
+
+
+func _ready() -> void:
+	_crawl_sound = Sfx.make_loop_2d(self, "monster_loop", -2.0, 300.0)
+
+
+## Arrastre a 6 fotogramas por segundo mientras se mueve; quieto al congelarse.
+## También controla sus sonidos, igual en todos los equipos.
+func _animate(delta: float) -> void:
+	var moved := global_position.distance_to(_last_pos) > 0.05
+	_last_pos = global_position
+	if moved and not frozen:
+		_anim_time += delta * 6.0
+	sprite.frame = int(_anim_time) % 4
+	var crawling := moved and not frozen
+	if crawling and not _crawl_sound.playing:
+		_crawl_sound.play()
+	elif not crawling and _crawl_sound.playing:
+		_crawl_sound.stop()
+	_freeze_cooldown = maxf(_freeze_cooldown - delta, 0.0)
+	if frozen and not _was_frozen and _freeze_cooldown == 0.0:
+		Sfx.play_at("monster_freeze", global_position, -3.0)
+		_freeze_cooldown = FREEZE_SOUND_COOLDOWN
+	_was_frozen = frozen
 
 
 func _physics_process(delta: float) -> void:
 	# Solo el anfitrión mueve al monstruo. Los demás reciben posición y estado.
 	if multiplayer.is_server():
 		frozen = _is_lit()
+	_animate(delta)
 	if frozen:
 		velocity = Vector2.ZERO
 		sprite.position = Vector2(randi_range(-1, 1), randi_range(-1, 1))

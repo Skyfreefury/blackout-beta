@@ -66,6 +66,12 @@ func is_exit(pos: Vector2) -> bool:
 	return _char_at(world_to_cell(pos)) == "E"
 
 
+func door_position() -> Vector2:
+	if _door_cells.is_empty():
+		return Vector2.ZERO
+	return cell_center(_door_cells[_door_cells.size() / 2])
+
+
 ## Abre la puerta de salida: sus casillas pasan a ser suelo sin colisión ni sombra.
 func open_door() -> void:
 	door_open = true
@@ -168,6 +174,9 @@ func _make_tile_set() -> TileSet:
 		data.set_collision_polygon_points(0, 0, square)
 		var occluder := OccluderPolygon2D.new()
 		occluder.polygon = square
+		# Solo proyectan sombra los bordes del fondo: la cara de la pared que mira
+		# a la luz queda iluminada y lo que hay detrás sigue a oscuras.
+		occluder.cull_mode = OccluderPolygon2D.CULL_COUNTER_CLOCKWISE
 		data.set_occluder_polygons_count(0, 1)
 		data.set_occluder_polygon(0, 0, occluder)
 	var inset := square.duplicate()

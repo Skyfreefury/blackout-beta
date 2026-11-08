@@ -105,40 +105,112 @@ def player() -> Image.Image:
     return outline(img)
 
 
-def monster() -> Image.Image:
+PLAYER_COLORS = ["scrubs", "sick", "red", "bruise"]
+# Desplazamiento vertical de cada pierna por fotograma de paso: (izquierda, derecha).
+STEP = [(0, 0), (-1, 1), (0, 0), (1, -1)]
+
+
+def player_frame(direction: str, frame: int, cloth: str) -> Image.Image:
+    """direction: down, up o side (mirando a la derecha). frame: 0 a 3 del ciclo de paso."""
+    img = canvas(16, 24)
+    bob = 1 if frame in (1, 3) else 0
+    left, right = STEP[frame]
+    # Piernas.
+    if direction == "side":
+        rect(img, 6 + left, 18, 7 + left, 21, "slate")
+        rect(img, 8 - left, 18, 9 - left, 21, "night")
+        px(img, [(6 + left, 22), (7 + left, 22), (8 - left, 22), (9 - left, 22)], "black")
+    else:
+        rect(img, 5, 18, 7, 21 + left, "slate")
+        rect(img, 8, 18, 10, 21 + right, "slate")
+        px(img, [(5, 22 + left), (6, 22 + left), (9, 22 + right), (10, 22 + right)], "black")
+    y = -bob
+    # Cuerpo.
+    rect(img, 4, 10 + y, 11, 17 + y, cloth)
+    # Cabeza.
+    if direction == "down":
+        rect(img, 5, 2 + y, 10, 4 + y, "night")
+        rect(img, 5, 5 + y, 10, 9 + y, "skin")
+        px(img, [(6, 7 + y), (9, 7 + y)], "black")
+        px(img, [(7, 9 + y), (8, 9 + y)], "flesh")
+        px(img, [(7, 12 + y), (7, 13 + y), (7, 14 + y)], "night")  # cremallera
+    elif direction == "up":
+        rect(img, 5, 2 + y, 10, 8 + y, "night")
+        rect(img, 5, 9 + y, 10, 9 + y, "skin")
+    else:
+        rect(img, 5, 2 + y, 10, 4 + y, "night")
+        rect(img, 5, 5 + y, 10, 9 + y, "skin")
+        px(img, [(5, 5 + y), (5, 6 + y), (6, 5 + y)], "night")
+        px(img, [(9, 7 + y)], "black")
+    # Brazos: el de la linterna adelante, el otro balanceándose.
+    if direction == "side":
+        rect(img, 12, 11 + y, 13, 13 + y, "skin")
+        px(img, [(14, 12 + y)], "yellow")
+        rect(img, 3, 11 + y + left, 3, 15 + y + left, cloth)
+    else:
+        rect(img, 3, 11 + y + right, 3, 15 + y + right, cloth)
+        rect(img, 12, 11 + y + left, 12, 15 + y + left, cloth)
+        px(img, [(12, 16 + y + left)], "skin")
+        if direction == "down":
+            px(img, [(13, 16 + y + left)], "yellow")
+    return outline(img)
+
+
+def player_sheet(cloth: str) -> Image.Image:
+    """4 columnas (fotogramas de paso) x 3 filas (abajo, arriba, lado)."""
+    sheet = canvas(64, 72)
+    for row, direction in enumerate(("down", "up", "side")):
+        for frame in range(4):
+            sheet.paste(player_frame(direction, frame, cloth), (frame * 16, row * 24))
+    return sheet
+
+
+def monster_frame(frame: int) -> Image.Image:
     img = canvas(40, 40)
     d = ImageDraw.Draw(img)
-    # Brazos largos apoyados en el suelo.
-    d.line((13, 27, 5, 36), fill=P["flesh"], width=2)
-    d.line((27, 27, 35, 36), fill=P["flesh"], width=2)
-    px(img, [(3, 37), (5, 37), (7, 37), (33, 37), (35, 37), (37, 37)], "black")
+    reach = [(0, 0), (-2, 1), (0, 0), (2, -1)][frame]
+    lift = 1 if frame in (1, 3) else 0
+    # Brazos largos que se alternan al arrastrarse.
+    d.line((13, 27, 5 + reach[0], 36 - reach[0]), fill=P["flesh"], width=2)
+    d.line((27, 27, 35 + reach[1] * 2, 36 + reach[1]), fill=P["flesh"], width=2)
+    px(img, [(3 + reach[0], 37 - reach[0]), (5 + reach[0], 37 - reach[0]), (7 + reach[0], 37 - reach[0])], "black")
+    px(img, [(33 + reach[1] * 2, 37 + min(reach[1], 1)), (35 + reach[1] * 2, 37 + min(reach[1], 1)),
+             (37 + min(reach[1] * 2, 2), 37 + min(reach[1], 1))], "black")
     # Cuerpo encogido.
-    d.ellipse((12, 23, 28, 35), fill=P["flesh"])
-    d.ellipse((14, 25, 24, 33), fill=P["skin"])
-    # Cordón umbilical arrastrado.
-    d.line((20, 33, 24, 37), fill=P["red"], width=1)
-    d.line((24, 37, 31, 38), fill=P["red"], width=1)
-    d.line((31, 38, 36, 37), fill=P["blood"], width=1)
-    # Cabeza hinchada.
+    d.ellipse((12, 23 - lift, 28, 35 - lift), fill=P["flesh"])
+    d.ellipse((14, 25 - lift, 24, 33 - lift), fill=P["skin"])
+    # Cordón umbilical que serpentea.
+    wig = [0, 1, 0, -1][frame]
+    d.line((20, 33, 24, 37 + wig), fill=P["red"], width=1)
+    d.line((24, 37 + wig, 31, 38 - wig), fill=P["red"], width=1)
+    d.line((31, 38 - wig, 36, 37 + wig), fill=P["blood"], width=1)
     # Cabeza hinchada y asimétrica: el lado derecho abulta más.
-    d.ellipse((6, 2, 32, 26), fill=P["skin"])
-    d.ellipse((18, 1, 36, 20), fill=P["skin"])
-    d.ellipse((10, 4, 20, 11), fill=P["white"])
-    d.arc((6, 2, 32, 26), 20, 160, fill=P["flesh"], width=3)
-    d.arc((18, 1, 36, 20), 300, 60, fill=P["flesh"], width=2)
+    o = -lift
+    d.ellipse((6, 2 + o, 32, 26 + o), fill=P["skin"])
+    d.ellipse((18, 1 + o, 36, 20 + o), fill=P["skin"])
+    d.ellipse((10, 4 + o, 20, 11 + o), fill=P["white"])
+    d.arc((6, 2 + o, 32, 26 + o), 20, 160, fill=P["flesh"], width=3)
+    d.arc((18, 1 + o, 36, 20 + o), 300, 60, fill=P["flesh"], width=2)
     # Venas y moratones.
-    px(img, [(28, 4), (29, 5), (29, 6), (30, 7), (28, 7), (27, 8), (31, 8), (32, 9)], "red")
-    px(img, [(9, 9), (10, 10), (10, 11), (9, 12), (8, 13)], "bruise")
-    px(img, [(25, 18), (26, 19), (27, 19), (28, 18)], "bruise")
+    px(img, [(x, y + o) for x, y in ((28, 4), (29, 5), (29, 6), (30, 7), (28, 7), (27, 8), (31, 8), (32, 9))], "red")
+    px(img, [(x, y + o) for x, y in ((9, 9), (10, 10), (10, 11), (9, 12), (8, 13))], "bruise")
+    px(img, [(x, y + o) for x, y in ((25, 18), (26, 19), (27, 19), (28, 18))], "bruise")
     # Ojos hundidos y desiguales, sin pupila.
-    rect(img, 12, 13, 15, 17, "black")
-    rect(img, 22, 12, 27, 18, "black")
-    px(img, [(12, 12), (15, 12), (21, 13), (21, 17), (28, 14)], "bruise")
-    # Boca abierta en vertical con babeo.
-    rect(img, 18, 20, 20, 23, "black")
-    px(img, [(17, 21), (21, 21), (17, 22), (21, 22)], "bruise")
-    px(img, [(19, 24), (19, 25)], "red")
+    rect(img, 12, 13 + o, 15, 17 + o, "black")
+    rect(img, 22, 12 + o, 27, 18 + o, "black")
+    px(img, [(x, y + o) for x, y in ((12, 12), (15, 12), (21, 13), (21, 17), (28, 14))], "bruise")
+    # Boca abierta que se abre y cierra.
+    rect(img, 18, 20 + o, 20, 22 + o + (1 if frame % 2 == 0 else 0), "black")
+    px(img, [(17, 21 + o), (21, 21 + o), (17, 22 + o), (21, 22 + o)], "bruise")
+    px(img, [(19, 24 + o), (19, 25 + o)], "red")
     return outline(img)
+
+
+def monster_sheet() -> Image.Image:
+    sheet = canvas(160, 40)
+    for frame in range(4):
+        sheet.paste(monster_frame(frame), (frame * 40, 0))
+    return sheet
 
 
 def battery() -> Image.Image:
@@ -274,15 +346,20 @@ def main() -> None:
         tiles.paste(tile, (16 * i, 0))
     sprites = {
         "tiles": tiles,
-        "player": player(),
-        "monster": monster(),
+        "monster": monster_sheet(),
         "battery": battery(),
         "lamp": lamp(),
         "generator": generator(),
     }
+    for i, cloth in enumerate(PLAYER_COLORS):
+        sprites[f"player_{i}"] = player_sheet(cloth)
     for name, img in sprites.items():
         img.save(SPRITES / f"{name}.png")
-    save_preview([(n, sprites[n]) for n in ("tiles", "player", "monster", "generator", "battery", "lamp")])
+    (SPRITES / "player.png").unlink(missing_ok=True)
+    save_preview([(n, sprites[n]) for n in ("player_0", "player_1", "player_2", "player_3", "monster")])
+    sheet_tiles = Image.new("RGBA", tiles.size, P["black"] + (255,))
+    sheet_tiles.alpha_composite(tiles)
+    sheet_tiles.resize((tiles.width * 6, tiles.height * 6), Image.NEAREST).save(PREVIEW / "tiles.png")
     print("ok:", ", ".join(f"{n} {i.size}" for n, i in sprites.items()))
 
 
