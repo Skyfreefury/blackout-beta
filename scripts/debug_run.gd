@@ -75,6 +75,8 @@ func _setup(main: Node) -> void:
 	if _args.has("walk"):
 		player.move_override = Vector2.RIGHT
 		player.aim_override = player.global_position + Vector2(200, 0)
+	if _args.has("pause"):
+		main.hud.toggle_pause()
 	if _args.has("cheat"):
 		# Salto imposible de 160 px: el anfitrión debe devolver al jugador a su sitio.
 		get_tree().create_timer(1.0).timeout.connect(func(): player.global_position += Vector2(160, 0))

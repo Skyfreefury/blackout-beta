@@ -135,6 +135,10 @@ func _build_pause() -> void:
 	var note := Label.new()
 	note.text = "La partida sigue en marcha"
 	box.add_child(note)
+	var help := Label.new()
+	help.text = Controls.HELP
+	help.add_theme_color_override("font_color", Color("8a93a0"))
+	box.add_child(help)
 	box.add_child(_button("Volver", toggle_pause))
 	box.add_child(_button("Abandonar", leave_requested.emit))
 	_pause.add_child(box)

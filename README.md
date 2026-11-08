@@ -12,7 +12,7 @@ Los jugadores recorren un hospital abandonado a oscuras para reactivar 3 generad
 2. Los demás escriben esa IP y pulsan Unirse.
 3. Fuera de la red local, el anfitrión debe abrir el puerto UDP 7777 en su router.
 
-Controles: WASD mover, ratón apuntar, Mayús correr, F linterna, E coger pila, mantener E para reparar generadores o reanimar, Escape pausa, R otra partida (anfitrión, al terminar).
+Controles: WASD mover, ratón apuntar, Q o clic derecho linterna (F también vale), E coger pila, mantener E para reparar generadores o reanimar, Espacio correr (Mayús también vale), Escape pausa, F11 pantalla completa, R otra partida (anfitrión, al terminar).
 
 ## Pruebas automáticas
 ```bash
