@@ -44,11 +44,9 @@ func _build_ui() -> void:
 	root.add_theme_constant_override("separation", 6)
 	center.add_child(root)
 
-	var title := Label.new()
-	title.text = "BLACKOUT"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 24)
-	title.add_theme_color_override("font_color", ACCENT)
+	var title := TextureRect.new()
+	title.texture = preload("res://art/sprites/logo.png")
+	title.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 	root.add_child(title)
 
 	root.add_child(_main_box)

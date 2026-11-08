@@ -13,6 +13,7 @@ config_version=5
 config/name="Blackout"
 run/main_scene="res://scenes/menu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://art/sprites/icon.png"
 
 [autoload]
 
