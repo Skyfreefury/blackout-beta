@@ -214,7 +214,7 @@ func _pick_target(skip_watchers: bool) -> Player:
 		var repairing := player.is_repairing()
 		if best_repairing and not repairing:
 			continue
-		var dist := global_position.distance_to(player.global_position)
+		var dist := player.lure_distance(global_position)
 		if dist < best_dist or (repairing and not best_repairing):
 			best_repairing = repairing
 			best_dist = dist

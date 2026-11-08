@@ -1,6 +1,6 @@
 # Ideas para próximas versiones
 
-Ideas anotadas el 2026-11-08. Ninguna está implementada.
+Ideas anotadas el 2026-11-08. Los roles están implementados. El resto sigue pendiente.
 
 ## Mapas que cambian en cada partida
 | Opción | Qué cambia | Trabajo |
@@ -32,7 +32,10 @@ El anfitrión elige una semilla y la envía al resto, así todos generan el mism
 - Lo que no se saca se pierde al morir. Lo extraído se gasta entre partidas en mejoras: linternas, más batería, botiquines.
 - Riesgo: necesita progreso guardado entre partidas y equilibrar la economía. Es el cambio más grande de esta lista.
 
-## Roles en cooperativo
+## Roles en cooperativo (implementado)
+Hecho en `scripts/roles.gd`. El botón "Rol" de la sala de espera cambia de rol.
+Valores actuales: enfermero/a reanima x1,5 con 72 de batería; corredor/a corre a 120 y aguanta 5 s, y el Nonato le ve a un 60% de su distancia; técnico/a repara x1,4 y se mueve a 54 y 90; vigía tiene un cono de 65° y gasta x3 al alumbrar al Nonato.
+
 Cada jugador elige un rol en la sala de espera. Una ventaja y una desventaja por rol para que ninguno sea siempre el mejor.
 
 | Rol | Ventaja | Desventaja |

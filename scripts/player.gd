@@ -20,6 +20,8 @@ const LOW_BATTERY := 0.2
 const LIGHT_RANGE := 120.0
 const LIGHT_ANGLE := 50.0
 const LIGHT_ENERGY := 1.2
+## Apuntar al monstruo gasta la linterna al doble de velocidad: vigilarle tiene un coste.
+const MONSTER_DRAIN := 2.0
 const PICKUP_RADIUS := 14.0
 const REVIVE_RANGE := 18.0
 const REVIVE_TIME := 4.0
@@ -39,6 +41,15 @@ const ROW_DOWN := 0
 const ROW_UP := 1
 const ROW_SIDE := 2
 
+## Rol del cooperativo (índice de Roles.LIST), asignado por el anfitrión al aparecer.
+var role := 0
+# Valores base multiplicados por el rol. Se calculan en _enter_tree.
+var battery_max := BATTERY_MAX
+var stamina_max := STAMINA_MAX
+var walk_speed := WALK_SPEED
+var run_speed := RUN_SPEED
+var light_angle := LIGHT_ANGLE
+var monster_drain := MONSTER_DRAIN
 var battery := BATTERY_MAX
 var stamina := STAMINA_MAX
 var light_on := true
@@ -101,11 +112,25 @@ var _prev_dead := false
 func _enter_tree() -> void:
 	set_multiplayer_authority(name.to_int() if name.is_valid_int() else 1)
 	$ServerSync.set_multiplayer_authority(1)
+	_apply_role()
+
+
+func _apply_role() -> void:
+	role = Roles.clamp_id(role)
+	battery_max = BATTERY_MAX * Roles.mult(role, "battery")
+	stamina_max = STAMINA_MAX * Roles.mult(role, "stamina")
+	walk_speed = WALK_SPEED * Roles.mult(role, "walk")
+	run_speed = RUN_SPEED * Roles.mult(role, "run")
+	light_angle = LIGHT_ANGLE * Roles.mult(role, "angle")
+	monster_drain = MONSTER_DRAIN * Roles.mult(role, "monster_drain")
+	battery = battery_max
+	stamina = stamina_max
+	_prev_battery = battery
 
 
 func _ready() -> void:
 	add_to_group("players")
-	flashlight.texture = LightTextures.cone(LIGHT_RANGE, LIGHT_ANGLE)
+	flashlight.texture = LightTextures.cone(LIGHT_RANGE, light_angle)
 	glow.texture = LightTextures.radial(28.0)
 	sprite.texture = load(SHEET_PATH % clampi(color_index, 0, 3))
 	camera.enabled = is_local()
@@ -155,7 +180,7 @@ func _validate_movement(delta: float) -> void:
 	if not is_active() or Net.allow_teleport:
 		_valid_pos = global_position
 		return
-	var max_speed := RUN_SPEED if can_act() else 0.0
+	var max_speed := run_speed if can_act() else 0.0
 	_move_budget = minf(_move_budget + max_speed * SPEED_SLACK * delta, max_speed * 0.5 + BURST_ALLOWANCE)
 	var moved := global_position.distance_to(_valid_pos)
 	if moved <= _move_budget + 0.5:
@@ -195,7 +220,7 @@ func is_lighting(point: Vector2) -> bool:
 	var to := point - origin
 	if to.length() > LIGHT_RANGE * 0.95:
 		return false
-	if absf(angle_difference(flashlight.global_rotation, to.angle())) > deg_to_rad(LIGHT_ANGLE / 2.0):
+	if absf(angle_difference(flashlight.global_rotation, to.angle())) > deg_to_rad(light_angle / 2.0):
 		return false
 	return LightTextures.has_line_of_sight(get_world_2d(), origin, point)
 
@@ -282,6 +307,16 @@ func _set_server_target(path: NodePath) -> void:
 	_server_target = get_node_or_null(path) if not path.is_empty() else null
 
 
+## Multiplicador de velocidad de trabajo del rol: reanimar a jugadores o reparar generadores.
+func work_factor(target: Node) -> float:
+	return Roles.mult(role, "revive" if target is Player else "repair")
+
+
+## Distancia que usa el monstruo al elegir presa. El rol corredor parece más cerca por el ruido.
+func lure_distance(from: Vector2) -> float:
+	return from.distance_to(global_position) * Roles.mult(role, "lure")
+
+
 func _server_tick(delta: float) -> void:
 	if can_act() and level != null and level.door_open and level.is_exit(global_position):
 		escaped = true
@@ -298,7 +333,7 @@ func _server_tick(delta: float) -> void:
 		var valid: bool = is_instance_valid(_server_target) and can_act() and _server_target.needs_work() \
 			and global_position.distance_to(_server_target.global_position) <= _range_for(_server_target) + NET_TOLERANCE
 		if valid:
-			_server_target.add_work(delta)
+			_server_target.add_work(delta * work_factor(_server_target))
 		else:
 			_server_target = null
 
@@ -316,8 +351,8 @@ func _move(delta: float) -> void:
 	if running:
 		stamina = maxf(stamina - delta, 0.0)
 	else:
-		stamina = minf(stamina + delta * STAMINA_MAX / STAMINA_REGEN_TIME, STAMINA_MAX)
-	var speed := RUN_SPEED if running else WALK_SPEED
+		stamina = minf(stamina + delta * stamina_max / STAMINA_REGEN_TIME, stamina_max)
+	var speed := run_speed if running else walk_speed
 	if down_count > 0:
 		speed *= WOUNDED_FACTOR
 	velocity = dir * speed
@@ -329,14 +364,10 @@ func _aim() -> void:
 	flashlight.rotation = (target - flashlight.global_position).angle()
 
 
-## Apuntar al monstruo gasta la linterna al doble de velocidad: vigilarle tiene un coste.
-const MONSTER_DRAIN := 2.0
-
-
 func _drain_battery(delta: float) -> void:
 	if light_on:
 		var monster := get_tree().get_first_node_in_group("monster") as Monster
-		var rate := MONSTER_DRAIN if monster != null and monster.is_lit_by(self) else 1.0
+		var rate := monster_drain if monster != null and monster.is_lit_by(self) else 1.0
 		battery = maxf(battery - delta * rate, 0.0)
 		if battery == 0.0:
 			light_on = false
@@ -351,7 +382,7 @@ func _update_visuals(delta: float) -> void:
 	glow.enabled = can_act()
 	flashlight.enabled = light_on and can_act()
 	# Con poca batería la luz parpadea, y en esos instantes el monstruo puede moverse.
-	if flashlight.enabled and battery < BATTERY_MAX * LOW_BATTERY:
+	if flashlight.enabled and battery < battery_max * LOW_BATTERY:
 		flashlight.energy = 0.15 if randf() < 0.08 else LIGHT_ENERGY
 	else:
 		flashlight.energy = LIGHT_ENERGY
@@ -412,7 +443,7 @@ func _request_pickup(pickup_path: NodePath) -> void:
 @rpc("any_peer", "call_local", "reliable")
 func _grant_battery() -> void:
 	if _sender() == 1:
-		battery = minf(battery + BATTERY_MAX * BATTERY_PICKUP, BATTERY_MAX)
+		battery = minf(battery + battery_max * BATTERY_PICKUP, battery_max)
 
 
 ## id del emisor del RPC en curso. En llamadas locales sin red devuelve el id propio.

@@ -13,13 +13,15 @@ Los jugadores recorren un hospital abandonado a oscuras para reactivar 3 generad
 2. Los demás escriben esa IP y pulsan Unirse.
 3. Fuera de la red local, el anfitrión debe abrir el puerto UDP 7777 en su router.
 
+Roles: en la sala de espera el botón Rol cambia entre enfermero/a, corredor/a, técnico/a y vigía. Cada uno tiene una ventaja y una desventaja.
+
 Controles: WASD mover, ratón apuntar, Q o clic derecho linterna (F también vale), E coger pila, mantener E para reparar generadores o reanimar, Espacio correr (Mayús también vale), Escape pausa, F11 pantalla completa, R otra partida (anfitrión, al terminar).
 
 ## Pruebas automáticas
 ```bash
 godot --headless --path . res://scenes/main.tscn -- --scenario=repair --nomonster --frames=700
 ```
-Escenarios del hospital: `repair`, `door`, `revive`, `bleed` (con `--nomonster`). Escenarios de luz con `--map=res://maps/test.txt`: `lit`, `dark`, `chase`, `lamp`. Todas las opciones en `scripts/debug_run.gd`.
+Escenarios del hospital: `repair`, `door`, `revive`, `bleed` (con `--nomonster`) y `lure`. `--role=N` elige el rol (0 enfermero/a, 1 corredor/a, 2 técnico/a, 3 vigía). Escenarios de luz con `--map=res://maps/test.txt`: `lit`, `dark`, `chase`, `lamp`. Todas las opciones en `scripts/debug_run.gd`.
 
 ## Ramas
 - `main`: versiones estables y probadas.

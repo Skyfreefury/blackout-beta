@@ -45,6 +45,9 @@ func _ready() -> void:
 	hud.leave_requested.connect(Net.leave)
 	if not OS.get_cmdline_user_args().is_empty():
 		add_child(DebugRun.new())
+		# Partida de prueba sin menú: --role=N elige el rol del jugador local.
+		if Net.players.is_empty() and not _user_arg("role").is_empty():
+			Net.player_role = Roles.clamp_id(int(_user_arg("role")))
 	Net.report_loaded()
 
 
@@ -105,7 +108,7 @@ func _on_all_loaded() -> void:
 	var ids := Net.players.keys()
 	ids.sort()
 	for i in ids.size():
-		spawner.spawn([ids[i], level.player_spawn + SPAWN_OFFSETS[i % SPAWN_OFFSETS.size()], i % 4])
+		spawner.spawn([ids[i], level.player_spawn + SPAWN_OFFSETS[i % SPAWN_OFFSETS.size()], i % 4, Net.roles.get(ids[i], 0)])
 	_mark_started.rpc()
 
 
@@ -114,12 +117,13 @@ func _mark_started() -> void:
 	_started = true
 
 
-## Corre en todos los equipos con los datos [id, posición, color] que envía el anfitrión.
+## Corre en todos los equipos con los datos [id, posición, color, rol] que envía el anfitrión.
 func _create_player(data: Array) -> Node:
 	var p: Player = PLAYER_SCENE.instantiate()
 	p.name = str(data[0])
 	p.position = data[1]
 	p.color_index = data[2] if data.size() > 2 else 0
+	p.role = data[3] if data.size() > 3 else 0
 	p.level = level
 	return p
 

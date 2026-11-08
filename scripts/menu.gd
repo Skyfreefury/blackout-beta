@@ -1,7 +1,7 @@
 extends Control
 ## Menú principal y sala de espera.
 ## Argumentos de prueba tras "--": --name=X, --host[=N] (empieza al llegar a N jugadores),
-## --join=IP, --bind=IP (IP local del anfitrión).
+## --join=IP, --bind=IP (IP local del anfitrión), --role=N (índice de Roles.LIST).
 
 const JOIN_TIMEOUT := 5.0
 const TEXT_COLOR := Color("c9d1d3")
@@ -15,6 +15,8 @@ var _lobby_box := VBoxContainer.new()
 var _lobby_title := Label.new()
 var _player_list := Label.new()
 var _start_button := Button.new()
+var _role_button := Button.new()
+var _role_info := Label.new()
 var _join_timer := Timer.new()
 var _auto_start_at := 0
 var _options_box := VBoxContainer.new()
@@ -88,6 +90,11 @@ func _build_ui() -> void:
 	root.add_child(_lobby_box)
 	_lobby_box.add_child(_lobby_title)
 	_lobby_box.add_child(_player_list)
+	_role_button.pressed.connect(Sfx.play_ui.bind("ui_click", -6.0))
+	_role_button.pressed.connect(_on_role_pressed)
+	_lobby_box.add_child(_role_button)
+	_role_info.add_theme_color_override("font_color", Color("8a93a0"))
+	_lobby_box.add_child(_role_info)
 	_start_button.text = "Empezar"
 	_start_button.pressed.connect(Net.start_game)
 	_lobby_box.add_child(_start_button)
@@ -160,6 +167,7 @@ func _box(fill: Color, border := Color(0, 0, 0, 0)) -> StyleBoxFlat:
 func _read_name() -> void:
 	var clean := _name_edit.text.strip_edges().left(Net.NAME_MAX)
 	Net.player_name = clean if not clean.is_empty() else "Jugador"
+	Net.player_role = Roles.clamp_id(Settings.role)
 	if Settings.player_name != Net.player_name:
 		Settings.player_name = Net.player_name
 		Settings.save()
@@ -201,6 +209,14 @@ func _on_leave_pressed() -> void:
 	_show_lobby(false)
 
 
+## Pasa al siguiente rol. El anfitrión lo reparte a todos.
+func _on_role_pressed() -> void:
+	Net.set_role((Net.player_role + 1) % Roles.count())
+	Settings.role = Net.player_role
+	Settings.save()
+	_refresh_lobby()
+
+
 func _show_lobby(in_lobby: bool) -> void:
 	_main_box.visible = not in_lobby
 	_lobby_box.visible = in_lobby
@@ -214,8 +230,10 @@ func _refresh_lobby() -> void:
 	_lobby_title.text = "Sala (%d/%d)" % [ids.size(), Net.MAX_PLAYERS]
 	var lines := PackedStringArray()
 	for id: int in ids:
-		lines.append(("* " if id == 1 else "- ") + str(Net.players[id]))
+		lines.append("%s%s (%s)" % ["* " if id == 1 else "- ", Net.players[id], Roles.role_name(Net.roles.get(id, 0))])
 	_player_list.text = "\n".join(lines) if not lines.is_empty() else "Esperando..."
+	_role_button.text = "Rol: %s" % Roles.role_name(Net.player_role)
+	_role_info.text = Roles.effects(Net.player_role)
 	var is_host := multiplayer.is_server() and Net.is_online()
 	_start_button.visible = is_host
 	if _lobby_box.visible and not is_host:
@@ -243,6 +261,8 @@ func _apply_debug_args() -> void:
 		return
 	if args.has("name"):
 		_name_edit.text = args["name"]
+	if args.has("role"):
+		Settings.role = int(args["role"])
 	if args.has("bind"):
 		Net.bind_ip = args["bind"]
 	if args.has("host"):

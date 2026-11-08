@@ -25,6 +25,7 @@ var _pause := PanelContainer.new()
 var _end := PanelContainer.new()
 var _end_text := Label.new()
 var _end_hint := Label.new()
+var _role_label := Label.new()
 
 
 func _ready() -> void:
@@ -68,6 +69,9 @@ func flash_message(text: String) -> void:
 
 func toggle_pause() -> void:
 	_pause.visible = not _pause.visible
+	if player != null:
+		_role_label.text = "Rol: %s
+%s" % [Roles.role_name(player.role), Roles.effects(player.role)]
 
 
 func show_end(victory: bool, time: float, survivors: PackedStringArray, is_host: bool) -> void:
@@ -109,8 +113,8 @@ func _draw() -> void:
 	if player == null:
 		return
 	var bottom := size.y - 6.0
-	_bar(Vector2(6, bottom - 12), player.battery / Player.BATTERY_MAX, BATTERY_COLOR)
-	_bar(Vector2(6, bottom - 6), player.stamina / Player.STAMINA_MAX, STAMINA_COLOR)
+	_bar(Vector2(6, bottom - 12), player.battery / player.battery_max, BATTERY_COLOR)
+	_bar(Vector2(6, bottom - 6), player.stamina / player.stamina_max, STAMINA_COLOR)
 	var target := player.hold_target
 	if target != null and is_instance_valid(target):
 		var pos := Vector2((size.x - BAR_SIZE.x) / 2.0, size.y / 2.0 + 14)
@@ -135,6 +139,8 @@ func _build_pause() -> void:
 	var note := Label.new()
 	note.text = "La partida sigue en marcha"
 	box.add_child(note)
+	_role_label.add_theme_color_override("font_color", BATTERY_COLOR)
+	box.add_child(_role_label)
 	var help := Label.new()
 	help.text = Controls.HELP
 	help.add_theme_color_override("font_color", Color("8a93a0"))

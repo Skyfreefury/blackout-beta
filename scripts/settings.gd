@@ -1,5 +1,5 @@
 extends Node
-## Opciones del jugador guardadas en user://settings.cfg: volumen, pantalla completa y nombre.
+## Opciones del jugador guardadas en user://settings.cfg: volumen, pantalla completa, nombre y rol.
 ## F11 alterna pantalla completa en cualquier pantalla.
 
 const PATH := "user://settings.cfg"
@@ -8,6 +8,8 @@ const PATH := "user://settings.cfg"
 var volume := 0.8
 var fullscreen := false
 var player_name := "Jugador"
+## Último rol elegido en la sala de espera.
+var role := 0
 
 
 func _ready() -> void:
@@ -16,6 +18,7 @@ func _ready() -> void:
 		volume = clampf(cfg.get_value("audio", "volume", volume), 0.0, 1.0)
 		fullscreen = cfg.get_value("video", "fullscreen", fullscreen)
 		player_name = str(cfg.get_value("player", "name", player_name))
+		role = int(cfg.get_value("player", "role", role))
 	apply()
 
 
@@ -41,4 +44,5 @@ func save() -> void:
 	cfg.set_value("audio", "volume", volume)
 	cfg.set_value("video", "fullscreen", fullscreen)
 	cfg.set_value("player", "name", player_name)
+	cfg.set_value("player", "role", role)
 	cfg.save(PATH)

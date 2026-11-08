@@ -6,6 +6,7 @@ extends Node
 ##   --scenario=repair|door|revive|bleed    bucle de partida en el hospital
 ##   --scenario=trap|safe|allon|guard       luces de emergencia y vigilancia con linterna
 ##   --nomonster                            congela al monstruo
+##   --role=N                               rol del jugador local (índice de Roles.LIST)
 ## En red (lanzando el menú con --host=N o --join=IP):
 ##   --walk     el jugador local camina a la derecha
 ##   --pickup   el jugador local va a la pila 0 y la pide al anfitrión
@@ -141,6 +142,16 @@ func _setup(main: Node) -> void:
 			monster.global_position = level.cell_center(Vector2i(30, 16))
 			_main = main
 			_track_monster = true
+		"lure":
+			# Compañero a 8 casillas y jugador local a 12. Con el rol corredor (--role=1)
+			# el ruido hace que el monstruo vaya a por el jugador local.
+			main.spawner.spawn([2, level.cell_center(Vector2i(22, 16)), 1])
+			await _wait(2)
+			_dummy = main.entities.get_node("2")
+			_dummy.light_on = false
+			player.light_on = false
+			player.global_position = level.cell_center(Vector2i(42, 16))
+			monster.global_position = level.cell_center(Vector2i(30, 16))
 		"bleed":
 			player.hit()
 		"trap":
@@ -192,8 +203,10 @@ func _report(main: Node) -> void:
 		main._ended,
 		get_tree().get_nodes_in_group("players").size(),
 	]
+	line += " role=%d gen0=%.2f battery_max=%.0f run=%.0f angle=%.0f" % [p.role, main.generators[0].progress if not main.generators.is_empty() else 0.0, p.battery_max, p.run_speed, p.light_angle]
 	line += " monster_dist=%.0f watchers=%d vel=(%.0f,%.0f) target=%s" % [monster.global_position.distance_to(p.global_position), monster._watchers.size(), monster.velocity.x, monster.velocity.y, monster._target]
 	if _dummy != null:
+		line += " dummy_progress=%.2f" % _dummy.revive_progress
 		line += " dummy_down=%s dummy_dead=%s dummy_downs=%d" % [_dummy.is_down, _dummy.is_dead, _dummy.down_count]
 		# Segundo golpe tras la reanimación: debe matar.
 		_dummy.hit()
