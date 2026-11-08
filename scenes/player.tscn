@@ -6,7 +6,7 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_feet"]
 size = Vector2(10, 6)
 
-[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_player"]
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_owner"]
 properties/0/path = NodePath(".:position")
 properties/0/spawn = true
 properties/0/replication_mode = 1
@@ -23,9 +23,29 @@ properties/4/path = NodePath(".:battery")
 properties/4/spawn = true
 properties/4/replication_mode = 2
 
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_server"]
+properties/0/path = NodePath(".:is_down")
+properties/0/spawn = true
+properties/0/replication_mode = 2
+properties/1/path = NodePath(".:is_dead")
+properties/1/spawn = true
+properties/1/replication_mode = 2
+properties/2/path = NodePath(".:escaped")
+properties/2/spawn = true
+properties/2/replication_mode = 2
+properties/3/path = NodePath(".:down_count")
+properties/3/spawn = true
+properties/3/replication_mode = 2
+properties/4/path = NodePath(".:down_time")
+properties/4/spawn = true
+properties/4/replication_mode = 2
+properties/5/path = NodePath(".:revive_progress")
+properties/5/spawn = true
+properties/5/replication_mode = 2
+
 [node name="Player" type="CharacterBody2D"]
 collision_layer = 2
-collision_mask = 1
+collision_mask = 17
 motion_mode = 1
 script = ExtResource("1_script")
 
@@ -53,4 +73,7 @@ position_smoothing_enabled = true
 position_smoothing_speed = 8.0
 
 [node name="Sync" type="MultiplayerSynchronizer" parent="."]
-replication_config = SubResource("SceneReplicationConfig_player")
+replication_config = SubResource("SceneReplicationConfig_owner")
+
+[node name="ServerSync" type="MultiplayerSynchronizer" parent="."]
+replication_config = SubResource("SceneReplicationConfig_server")

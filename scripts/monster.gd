@@ -88,14 +88,21 @@ func _retreat() -> void:
 	velocity = _target.global_position.direction_to(global_position) * RETREAT_SPEED
 
 
+## Jugador más cercano que puede actuar. El ruido de reparar un generador
+## atrae al monstruo: quien repara tiene prioridad sobre los demás.
 func _nearest_player() -> Player:
 	var best: Player = null
 	var best_dist := INF
+	var best_repairing := false
 	for player: Player in get_tree().get_nodes_in_group("players"):
-		if player.is_down:
+		if not player.can_act():
+			continue
+		var repairing := player.is_repairing()
+		if best_repairing and not repairing:
 			continue
 		var dist := global_position.distance_to(player.global_position)
-		if dist < best_dist:
+		if dist < best_dist or (repairing and not best_repairing):
+			best_repairing = repairing
 			best_dist = dist
 			best = player
 	return best

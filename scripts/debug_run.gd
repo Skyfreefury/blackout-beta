@@ -2,7 +2,9 @@ class_name DebugRun
 extends Node
 ## Pruebas automáticas y capturas. Solo se activa con argumentos tras "--".
 ## Sin red (lanzando res://scenes/main.tscn):
-##   --scenario=lit|dark|chase|lamp|spawn  coloca jugador y monstruo
+##   --scenario=lit|dark|chase|lamp|spawn   pruebas de luz (usar con --map=res://maps/test.txt)
+##   --scenario=repair|door|revive|bleed    bucle de partida en el hospital
+##   --nomonster                            congela al monstruo
 ## En red (lanzando el menú con --host=N o --join=IP):
 ##   --walk     el jugador local camina a la derecha
 ##   --pickup   el jugador local va a la pila 0 y la pide al anfitrión
@@ -10,13 +12,14 @@ extends Node
 ##   --frames=N     fotogramas antes de medir (120 por defecto)
 ##   --linger=N     fotogramas extra antes de cerrar (0 por defecto)
 ##   --shot=ruta    guarda una captura ampliada x4
-## Ejemplo: godot --path . res://scenes/main.tscn -- --scenario=lit --shot=C:/tmp/lit.png
+## Ejemplo: godot --path . res://scenes/main.tscn -- --scenario=repair --nomonster --frames=700
 
 const PLAYER_WAIT_FRAMES := 300
 
 var _args := {}
 var _monster_start := Vector2.ZERO
 var _player_start := Vector2.ZERO
+var _dummy: Player
 
 
 func _ready() -> void:
@@ -33,7 +36,9 @@ func _ready() -> void:
 		print("RESULT error=sin_jugador_local id=%d" % multiplayer.get_unique_id())
 		get_tree().quit(1)
 		return
-	_setup(main)
+	if _args.has("nomonster"):
+		main.monster.process_mode = Node.PROCESS_MODE_DISABLED
+	await _setup(main)
 	_monster_start = main.monster.global_position
 	_player_start = main.player.global_position
 	await _wait(int(_args.get("frames", "120")))
@@ -64,7 +69,7 @@ func _setup(main: Node) -> void:
 		player.global_position = level.battery_spawns[0]
 		player.aim_override = player.global_position + Vector2(50, 0)
 		# Espera a que el anfitrión reciba la nueva posición antes de pedir la pila.
-		get_tree().create_timer(0.5).timeout.connect(player._try_pickup)
+		get_tree().create_timer(0.5).timeout.connect(player.start_interact)
 	match _args.get("scenario", ""):
 		"lit", "dark":
 			player.global_position = level.cell_center(Vector2i(20, 5))
@@ -82,23 +87,52 @@ func _setup(main: Node) -> void:
 			player.aim_override = player.global_position + Vector2(-50, 0)
 		"spawn":
 			player.aim_override = player.global_position + Vector2(80, 30)
+		"repair":
+			var gen: Generator = main.generators[0]
+			player.global_position = gen.global_position + Vector2(0, 14)
+			player.aim_override = gen.global_position
+			await _wait(2)
+			player.start_interact()
+		"door":
+			for gen: Generator in main.generators:
+				gen.progress = Generator.REPAIR_TIME
+				gen.repaired = true
+			await _wait(5)
+			player.global_position = level.cell_center(Vector2i(29, 5))
+			player.move_override = Vector2.UP
+		"revive":
+			main.spawner.spawn([2, player.global_position + Vector2(12, 0)])
+			await _wait(2)
+			_dummy = main.entities.get_node("2")
+			_dummy.hit()
+			await _wait(2)
+			player.start_interact()
+		"bleed":
+			player.hit()
 	player.camera.reset_smoothing()
 
 
 func _report(main: Node) -> void:
 	var monster: Monster = main.monster
-	var others := PackedStringArray()
-	for p: Player in get_tree().get_nodes_in_group("players"):
-		others.append("%s@(%d,%d)" % [p.name, p.global_position.x, p.global_position.y])
-	print("RESULT id=%d scenario=%s frozen=%s monster_moved=%.1f monster=(%d,%d) downed=%s battery=%.1f walked=%.1f batteries_left=%d players=[%s]" % [
+	var p: Player = main.player
+	var gens := (main.generators as Array).filter(func(g): return g.repaired).size()
+	var line := "RESULT id=%d scenario=%s frozen=%s monster_moved=%.1f downed=%s dead=%s escaped=%s downs=%d battery=%.1f walked=%.1f batteries=%d gens=%d door=%s ended=%s players=%d" % [
 		multiplayer.get_unique_id(),
 		_args.get("scenario", "-"),
 		monster.frozen,
 		monster.global_position.distance_to(_monster_start),
-		monster.global_position.x, monster.global_position.y,
-		main.player.is_down,
-		main.player.battery,
-		main.player.global_position.distance_to(_player_start),
+		p.is_down, p.is_dead, p.escaped, p.down_count,
+		p.battery,
+		p.global_position.distance_to(_player_start),
 		get_tree().get_nodes_in_group("batteries").size(),
-		", ".join(others),
-	])
+		gens,
+		main.level.door_open,
+		main._ended,
+		get_tree().get_nodes_in_group("players").size(),
+	]
+	if _dummy != null:
+		line += " dummy_down=%s dummy_dead=%s dummy_downs=%d" % [_dummy.is_down, _dummy.is_dead, _dummy.down_count]
+		# Segundo golpe tras la reanimación: debe matar.
+		_dummy.hit()
+		line += " dummy_dead_after_2nd_hit=%s" % _dummy.is_dead
+	print(line)

@@ -19,7 +19,7 @@ properties/2/replication_mode = 2
 
 [node name="Monster" type="CharacterBody2D"]
 collision_layer = 4
-collision_mask = 1
+collision_mask = 17
 motion_mode = 1
 script = ExtResource("1_script")
 

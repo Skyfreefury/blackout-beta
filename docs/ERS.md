@@ -161,7 +161,8 @@ Estas funciones quedan para ampliaciones posteriores:
 | Fase | Estado | Pendiente |
 |---|---|---|
 | 1 | Hecha. Pruebas automáticas: luz, oscuridad, lámpara y persecución. | Prueba manual del control. |
-| 2 | Hecha. Pruebas con 2 instancias en el mismo PC: movimiento, pila y derribo sincronizados. | Prueba entre 2 PCs reales. RF-06 opciones, RF-07 pausa (Escape sale al menú), RNF-06 validar velocidades. |
+| 2 | Hecha. Pruebas con 2 instancias en el mismo PC: movimiento, pila y derribo sincronizados. | Prueba entre 2 PCs reales. RF-06 opciones. RNF-06 validar velocidades. |
+| 3 | Hecha. Mapa del hospital (tools/gen_hospital_map.py), generadores, luces de zona, salida, reanimación, 2 derribos, muerte por desangrado, espectador, pausa (RF-07) y pantalla final. Pruebas: reparar, escapar, reanimar, segundo golpe y desangrado. | Prueba manual con 2 a 4 jugadores. El sótano está en el mismo plano que la planta baja, unido por casillas de escalera. |
 
 ## 9. Decisiones abiertas
 - Nombre definitivo del monstruo.

@@ -1,7 +1,7 @@
 """Genera los sprites provisionales de la fase 1 y una hoja de vista previa.
 
 Uso: python tools/gen_placeholders.py
-Salida: art/sprites/*.png y art/preview/fase1.png (ampliada x8).
+Salida: art/sprites/*.png y art/preview/sprites.png (ampliada x8).
 """
 from pathlib import Path
 
@@ -157,6 +157,96 @@ def lamp() -> Image.Image:
     return outline(img)
 
 
+def concrete_tile() -> Image.Image:
+    img = canvas(16, 16)
+    rect(img, 0, 0, 15, 15, "gray")
+    px(img, [(2, 3), (9, 1), (13, 6), (5, 10), (11, 13), (1, 14), (7, 7)], "slate")
+    px(img, [(4, 5), (12, 10), (8, 14)], "light")
+    px(img, [(i, 15) for i in range(16)], "slate")
+    return img
+
+
+def asphalt_tile() -> Image.Image:
+    img = canvas(16, 16)
+    rect(img, 0, 0, 15, 15, "night")
+    px(img, [(3, 2), (10, 4), (6, 9), (13, 12), (1, 13), (8, 15)], "slate")
+    px(img, [(7, y) for y in range(0, 16, 2)], "yellow")
+    return img
+
+
+def stairs_tile() -> Image.Image:
+    img = canvas(16, 16)
+    for y in range(0, 16, 4):
+        rect(img, 0, y, 15, y + 1, "light")
+        rect(img, 0, y + 2, 15, y + 3, "slate")
+    px(img, [(0, y) for y in range(16)] + [(15, y) for y in range(16)], "night")
+    return img
+
+
+def door_tile() -> Image.Image:
+    img = canvas(16, 16)
+    rect(img, 0, 0, 15, 15, "slate")
+    for i in range(-16, 16, 4):
+        for j in range(2):
+            pts = [(x, x - i - j) for x in range(16) if 0 <= x - i - j < 16]
+            px(img, pts, "red")
+    rect(img, 0, 0, 15, 1, "gray")
+    rect(img, 0, 14, 15, 15, "night")
+    return img
+
+
+def gurney_tile() -> Image.Image:
+    img = floor_tile(False)
+    rect(img, 3, 1, 12, 14, "gray")
+    rect(img, 4, 2, 11, 13, "white")
+    rect(img, 5, 2, 10, 4, "light")
+    px(img, [(7, 9), (8, 9), (8, 10), (7, 11)], "blood")
+    return img
+
+
+def wheelchair_tile() -> Image.Image:
+    img = floor_tile(False)
+    rect(img, 2, 4, 3, 12, "night")
+    rect(img, 12, 4, 13, 12, "night")
+    rect(img, 4, 5, 11, 11, "scrubs")
+    rect(img, 4, 3, 11, 4, "slate")
+    px(img, [(5, 13), (10, 13)], "light")
+    return img
+
+
+def incubator_tile() -> Image.Image:
+    img = floor_tile(False)
+    rect(img, 1, 3, 14, 13, "gray")
+    rect(img, 2, 4, 13, 12, "light")
+    rect(img, 6, 6, 9, 9, "flesh")
+    px(img, [(6, 6), (9, 6)], "skin")
+    px(img, [(3, 5), (4, 5)], "white")
+    return img
+
+
+def table_tile() -> Image.Image:
+    img = floor_tile(False)
+    rect(img, 1, 2, 14, 12, "gray")
+    rect(img, 2, 3, 13, 11, "light")
+    px(img, [(1, 13), (14, 13)], "night")
+    px(img, [(10, 5), (11, 5), (11, 6)], "blood")
+    return img
+
+
+def generator() -> Image.Image:
+    img = canvas(16, 24)
+    rect(img, 1, 6, 14, 22, "slate")
+    rect(img, 1, 6, 14, 8, "gray")
+    rect(img, 3, 11, 12, 18, "night")
+    for x in range(3, 13, 2):
+        px(img, [(x, 12), (x, 14), (x, 16)], "gray")
+    rect(img, 1, 20, 14, 21, "yellow")
+    px(img, [(2, 20), (5, 20), (8, 20), (11, 20), (14, 20)], "black")
+    rect(img, 6, 3, 9, 5, "night")      # foco de estado, se ilumina en el juego
+    px(img, [(12, 4), (13, 3), (14, 2)], "light")  # antena
+    return outline(img)
+
+
 def save_preview(items: list[tuple[str, Image.Image]]) -> None:
     scale, pad = 8, 16
     width = sum(img.width * scale + pad for _, img in items) + pad
@@ -167,27 +257,32 @@ def save_preview(items: list[tuple[str, Image.Image]]) -> None:
         big = img.resize((img.width * scale, img.height * scale), Image.NEAREST)
         sheet.alpha_composite(big, (x, pad))
         x += big.width + pad
-    sheet.save(PREVIEW / "fase1.png")
+    sheet.save(PREVIEW / "sprites.png")
 
 
 def main() -> None:
     SPRITES.mkdir(parents=True, exist_ok=True)
     PREVIEW.mkdir(parents=True, exist_ok=True)
 
-    tiles = canvas(48, 16)
-    tiles.paste(floor_tile(False), (0, 0))
-    tiles.paste(wall_tile(), (16, 0))
-    tiles.paste(floor_tile(True), (32, 0))
+    # El orden fija las coordenadas del atlas que usa scripts/level.gd.
+    atlas = [
+        floor_tile(False), wall_tile(), floor_tile(True), concrete_tile(), asphalt_tile(),
+        stairs_tile(), door_tile(), gurney_tile(), wheelchair_tile(), incubator_tile(), table_tile(),
+    ]
+    tiles = canvas(16 * len(atlas), 16)
+    for i, tile in enumerate(atlas):
+        tiles.paste(tile, (16 * i, 0))
     sprites = {
         "tiles": tiles,
         "player": player(),
         "monster": monster(),
         "battery": battery(),
         "lamp": lamp(),
+        "generator": generator(),
     }
     for name, img in sprites.items():
         img.save(SPRITES / f"{name}.png")
-    save_preview([(n, sprites[n]) for n in ("tiles", "player", "monster", "battery", "lamp")])
+    save_preview([(n, sprites[n]) for n in ("tiles", "player", "monster", "generator", "battery", "lamp")])
     print("ok:", ", ".join(f"{n} {i.size}" for n, i in sprites.items()))
 
 

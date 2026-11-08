@@ -1,13 +1,15 @@
 class_name Player
 extends CharacterBody2D
-## Jugador: movimiento, carrera con resistencia, linterna con batería y pilas.
-## El nodo se llama con el id de red de su dueño. El dueño mueve y apunta;
-## el anfitrión decide derribos y entrega de pilas.
+## Jugador: movimiento, linterna con batería, interacción mantenida y estados de vida.
+## El nodo se llama con el id de red de su dueño. El dueño mueve y apunta (nodo Sync).
+## El anfitrión decide derribos, reanimaciones, muerte y huida (nodo ServerSync).
 
-signal downed
+signal state_changed
 
 const WALK_SPEED := 60.0
 const RUN_SPEED := 100.0
+## Velocidad con la cojera tras el primer derribo.
+const WOUNDED_FACTOR := 0.8
 const STAMINA_MAX := 4.0
 const STAMINA_REGEN_TIME := 6.0
 ## Resistencia mínima para volver a correr tras agotarse.
@@ -19,28 +21,61 @@ const LIGHT_RANGE := 120.0
 const LIGHT_ANGLE := 50.0
 const LIGHT_ENERGY := 1.2
 const PICKUP_RADIUS := 14.0
-## Margen extra que acepta el anfitrión por el retraso de red al validar una pila.
-const PICKUP_TOLERANCE := 10.0
+const REVIVE_RANGE := 18.0
+const REVIVE_TIME := 4.0
+const BLEED_OUT_TIME := 30.0
+## Margen extra que acepta el anfitrión por el retraso de red al validar distancias.
+const NET_TOLERANCE := 10.0
+const WOUNDED_TINT := Color(1.0, 0.7, 0.7)
 
 var battery := BATTERY_MAX
 var stamina := STAMINA_MAX
 var light_on := true
-var is_down := false
+
+# Estado decidido por el anfitrión.
+var is_down := false:
+	set(value):
+		if value != is_down:
+			is_down = value
+			state_changed.emit()
+var is_dead := false:
+	set(value):
+		if value != is_dead:
+			is_dead = value
+			state_changed.emit()
+var escaped := false:
+	set(value):
+		if value != escaped:
+			escaped = value
+			state_changed.emit()
+## Derribos recibidos. Con 1, el siguiente golpe mata.
+var down_count := 0
+var down_time := 0.0
+var revive_progress := 0.0
+
+var level: Level
 ## Punto al que apuntar en lugar del ratón. Lo usan las pruebas automáticas.
 var aim_override: Variant = null
 ## Dirección fija en lugar del teclado. La usan las pruebas automáticas.
 var move_override: Variant = null
+## Objeto que el jugador local está reparando o reanimando con E mantenida.
+var hold_target: Node = null
 
 var _exhausted := false
+## Solo en el anfitrión: objetivo que este jugador dice estar trabajando.
+var _server_target: Node = null
+var _last_worked_frame := -10
 
 @onready var sprite: Sprite2D = $Sprite
 @onready var flashlight: PointLight2D = $Flashlight
 @onready var glow: PointLight2D = $Glow
 @onready var camera: Camera2D = $Camera
+@onready var shape: CollisionShape2D = $Shape
 
 
 func _enter_tree() -> void:
 	set_multiplayer_authority(name.to_int() if name.is_valid_int() else 1)
+	$ServerSync.set_multiplayer_authority(1)
 
 
 func _ready() -> void:
@@ -54,26 +89,50 @@ func is_local() -> bool:
 	return is_multiplayer_authority()
 
 
+## Sigue en la partida: no ha muerto ni escapado. Puede estar derribado.
+func is_active() -> bool:
+	return not is_dead and not escaped
+
+
+## Puede moverse, alumbrar e interactuar.
+func can_act() -> bool:
+	return is_active() and not is_down
+
+
+func is_repairing() -> bool:
+	return _server_target is Generator
+
+
 func _physics_process(delta: float) -> void:
-	if is_local() and not is_down:
-		_move(delta)
-		_aim()
-		_drain_battery(delta)
-	_update_light()
+	if is_local():
+		if can_act():
+			_move(delta)
+			_aim()
+			_drain_battery(delta)
+			_check_hold()
+		else:
+			velocity = Vector2.ZERO
+			light_on = false
+			_stop_hold()
+	if multiplayer.is_server():
+		_server_tick(delta)
+	_update_visuals()
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not is_local() or is_down:
+	if not is_local() or not can_act():
 		return
 	if event.is_action_pressed("toggle_light") and battery > 0.0:
 		light_on = not light_on
 	elif event.is_action_pressed("interact"):
-		_try_pickup()
+		start_interact()
+	elif event.is_action_released("interact"):
+		_stop_hold()
 
 
 ## True si la linterna ilumina ese punto: dentro del cono, del alcance y sin paredes en medio.
 func is_lighting(point: Vector2) -> bool:
-	if is_down or not flashlight.enabled or flashlight.energy < 0.5:
+	if not can_act() or not flashlight.enabled or flashlight.energy < 0.5:
 		return false
 	var origin := flashlight.global_position
 	var to := point - origin
@@ -84,25 +143,114 @@ func is_lighting(point: Vector2) -> bool:
 	return LightTextures.has_line_of_sight(get_world_2d(), origin, point)
 
 
-## Solo en el anfitrión. Derriba al jugador en todos los equipos.
+## Solo en el anfitrión. Primer golpe: derribo. Segundo golpe tras ser reanimado: muerte.
 func hit() -> void:
-	if multiplayer.is_server() and not is_down:
-		_set_down.rpc()
+	if not multiplayer.is_server() or not can_act():
+		return
+	if down_count >= 1:
+		is_dead = true
+	else:
+		down_count = 1
+		down_time = BLEED_OUT_TIME
+		revive_progress = 0.0
+		is_down = true
+
+
+func needs_work() -> bool:
+	return is_down and not is_dead
+
+
+func work_ratio() -> float:
+	return revive_progress / REVIVE_TIME
+
+
+## Solo en el anfitrión: otro jugador está reanimando a este.
+func add_work(delta: float) -> void:
+	if not needs_work():
+		return
+	_last_worked_frame = Engine.get_physics_frames()
+	revive_progress += delta
+	if revive_progress >= REVIVE_TIME:
+		revive_progress = 0.0
+		is_down = false
+
+
+## Busca algo cerca con E: compañero derribado, generador o pila.
+func start_interact() -> void:
+	var target := _find_hold_target()
+	if target != null:
+		hold_target = target
+		_set_server_target.rpc_id(1, target.get_path())
+		return
+	for pickup: Node2D in get_tree().get_nodes_in_group("batteries"):
+		if global_position.distance_to(pickup.global_position) <= PICKUP_RADIUS:
+			_request_pickup.rpc_id(1, pickup.get_path())
+			return
+
+
+func _find_hold_target() -> Node:
+	for other: Player in get_tree().get_nodes_in_group("players"):
+		if other != self and other.needs_work() \
+				and global_position.distance_to(other.global_position) <= REVIVE_RANGE:
+			return other
+	for gen: Generator in get_tree().get_nodes_in_group("generators"):
+		if gen.needs_work() and global_position.distance_to(gen.global_position) <= Generator.INTERACT_RANGE:
+			return gen
+	return null
+
+
+func _check_hold() -> void:
+	if hold_target == null:
+		return
+	if not is_instance_valid(hold_target) or not hold_target.needs_work() \
+			or global_position.distance_to(hold_target.global_position) > _range_for(hold_target):
+		_stop_hold()
+
+
+func _stop_hold() -> void:
+	if hold_target == null:
+		return
+	hold_target = null
+	_set_server_target.rpc_id(1, NodePath())
+
+
+func _range_for(target: Node) -> float:
+	return REVIVE_RANGE if target is Player else Generator.INTERACT_RANGE
 
 
 @rpc("any_peer", "call_local", "reliable")
-func _set_down() -> void:
-	if not _from_server():
+func _set_server_target(path: NodePath) -> void:
+	if not multiplayer.is_server() or _sender() != get_multiplayer_authority():
 		return
-	is_down = true
-	light_on = false
-	sprite.rotation_degrees = 90.0
-	downed.emit()
+	_server_target = get_node_or_null(path) if not path.is_empty() else null
+
+
+func _server_tick(delta: float) -> void:
+	if can_act() and level != null and level.door_open and level.is_exit(global_position):
+		escaped = true
+		return
+	if is_down:
+		down_time = maxf(down_time - delta, 0.0)
+		if down_time == 0.0:
+			is_down = false
+			is_dead = true
+		# La reanimación se pierde si nadie la mantiene.
+		if Engine.get_physics_frames() - _last_worked_frame > 2:
+			revive_progress = 0.0
+	if _server_target != null:
+		var valid: bool = is_instance_valid(_server_target) and can_act() and _server_target.needs_work() \
+			and global_position.distance_to(_server_target.global_position) <= _range_for(_server_target) + NET_TOLERANCE
+		if valid:
+			_server_target.add_work(delta)
+		else:
+			_server_target = null
 
 
 func _move(delta: float) -> void:
 	var dir: Vector2 = move_override if move_override != null \
 		else Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	if hold_target != null:
+		dir = Vector2.ZERO
 	if stamina <= 0.0:
 		_exhausted = true
 	elif stamina >= STAMINA_RECOVER:
@@ -112,7 +260,10 @@ func _move(delta: float) -> void:
 		stamina = maxf(stamina - delta, 0.0)
 	else:
 		stamina = minf(stamina + delta * STAMINA_MAX / STAMINA_REGEN_TIME, STAMINA_MAX)
-	velocity = dir * (RUN_SPEED if running else WALK_SPEED)
+	var speed := RUN_SPEED if running else WALK_SPEED
+	if down_count > 0:
+		speed *= WOUNDED_FACTOR
+	velocity = dir * speed
 	move_and_slide()
 
 
@@ -130,20 +281,18 @@ func _drain_battery(delta: float) -> void:
 
 
 ## Corre en todos los equipos con los valores sincronizados.
-func _update_light() -> void:
-	flashlight.enabled = light_on and not is_down
+func _update_visuals() -> void:
+	visible = is_active()
+	shape.disabled = not is_active()
+	glow.enabled = can_act()
+	flashlight.enabled = light_on and can_act()
 	# Con poca batería la luz parpadea, y en esos instantes el monstruo puede moverse.
 	if flashlight.enabled and battery < BATTERY_MAX * LOW_BATTERY:
 		flashlight.energy = 0.15 if randf() < 0.08 else LIGHT_ENERGY
 	else:
 		flashlight.energy = LIGHT_ENERGY
-
-
-func _try_pickup() -> void:
-	for pickup: Node2D in get_tree().get_nodes_in_group("batteries"):
-		if global_position.distance_to(pickup.global_position) <= PICKUP_RADIUS:
-			_request_pickup.rpc_id(1, pickup.get_path())
-			return
+	sprite.rotation_degrees = 90.0 if is_down else 0.0
+	sprite.modulate = WOUNDED_TINT if down_count > 0 else Color.WHITE
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -153,7 +302,7 @@ func _request_pickup(pickup_path: NodePath) -> void:
 	var pickup := get_node_or_null(pickup_path) as BatteryPickup
 	if pickup == null or pickup.is_queued_for_deletion():
 		return
-	if global_position.distance_to(pickup.global_position) > PICKUP_RADIUS + PICKUP_TOLERANCE:
+	if global_position.distance_to(pickup.global_position) > PICKUP_RADIUS + NET_TOLERANCE:
 		return
 	pickup.take.rpc()
 	_grant_battery.rpc_id(get_multiplayer_authority())
@@ -161,7 +310,7 @@ func _request_pickup(pickup_path: NodePath) -> void:
 
 @rpc("any_peer", "call_local", "reliable")
 func _grant_battery() -> void:
-	if _from_server():
+	if _sender() == 1:
 		battery = minf(battery + BATTERY_MAX * BATTERY_PICKUP, BATTERY_MAX)
 
 
@@ -169,7 +318,3 @@ func _grant_battery() -> void:
 func _sender() -> int:
 	var id := multiplayer.get_remote_sender_id()
 	return id if id != 0 else multiplayer.get_unique_id()
-
-
-func _from_server() -> bool:
-	return _sender() == 1
