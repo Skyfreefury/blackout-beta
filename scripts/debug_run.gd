@@ -4,6 +4,7 @@ extends Node
 ## Sin red (lanzando res://scenes/main.tscn):
 ##   --scenario=lit|dark|chase|lamp|spawn   pruebas de luz (usar con --map=res://maps/test.txt)
 ##   --scenario=repair|door|revive|bleed    bucle de partida en el hospital
+##   --scenario=trap|safe|allon|guard       luces de emergencia y vigilancia con linterna
 ##   --nomonster                            congela al monstruo
 ## En red (lanzando el menú con --host=N o --join=IP):
 ##   --walk     el jugador local camina a la derecha
@@ -20,6 +21,9 @@ var _args := {}
 var _monster_start := Vector2.ZERO
 var _player_start := Vector2.ZERO
 var _dummy: Player
+## El jugador local apunta al monstruo en cada fotograma.
+var _track_monster := false
+var _main: Node
 
 
 func _ready() -> void:
@@ -86,6 +90,9 @@ func _setup(main: Node) -> void:
 			monster.global_position = level.cell_center(Vector2i(27, 5))
 			var aim := monster.global_position + Vector2(0, -10)
 			player.aim_override = aim if _args["scenario"] == "lit" else player.global_position + Vector2(-50, 0)
+			# A oscuras de verdad: si la linterna le rozara un instante, buscaría otra ruta.
+			if _args["scenario"] == "dark":
+				player.light_on = false
 		"chase":
 			# Linterna apagada y lejos de las lámparas: el monstruo cruza el mapa.
 			player.light_on = false
@@ -122,6 +129,16 @@ func _setup(main: Node) -> void:
 			_dummy.hit()
 			await _wait(2)
 			player.start_interact()
+		"guard":
+			# Un jugador vigila con la linterna y otro está lejos: el monstruo debe ir a por el otro.
+			main.spawner.spawn([2, level.cell_center(Vector2i(5, 16)), 1])
+			await _wait(2)
+			_dummy = main.entities.get_node("2")
+			_dummy.light_on = false
+			player.global_position = level.cell_center(Vector2i(44, 16))
+			monster.global_position = level.cell_center(Vector2i(30, 16))
+			_main = main
+			_track_monster = true
 		"bleed":
 			player.hit()
 		"trap":
@@ -149,6 +166,11 @@ func _setup(main: Node) -> void:
 	player.camera.reset_smoothing()
 
 
+func _physics_process(_delta: float) -> void:
+	if _track_monster and _main != null and _main.player != null:
+		_main.player.aim_override = _main.monster.global_position + Vector2(0, -10)
+
+
 func _report(main: Node) -> void:
 	var monster: Monster = main.monster
 	var p: Player = main.player
@@ -168,6 +190,7 @@ func _report(main: Node) -> void:
 		main._ended,
 		get_tree().get_nodes_in_group("players").size(),
 	]
+	line += " monster_dist=%.0f watchers=%d vel=(%.0f,%.0f) target=%s" % [monster.global_position.distance_to(p.global_position), monster._watchers.size(), monster.velocity.x, monster.velocity.y, monster._target]
 	if _dummy != null:
 		line += " dummy_down=%s dummy_dead=%s dummy_downs=%d" % [_dummy.is_down, _dummy.is_dead, _dummy.down_count]
 		# Segundo golpe tras la reanimación: debe matar.

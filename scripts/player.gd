@@ -329,9 +329,15 @@ func _aim() -> void:
 	flashlight.rotation = (target - flashlight.global_position).angle()
 
 
+## Apuntar al monstruo gasta la linterna al doble de velocidad: vigilarle tiene un coste.
+const MONSTER_DRAIN := 2.0
+
+
 func _drain_battery(delta: float) -> void:
 	if light_on:
-		battery = maxf(battery - delta, 0.0)
+		var monster := get_tree().get_first_node_in_group("monster") as Monster
+		var rate := MONSTER_DRAIN if monster != null and monster.is_lit_by(self) else 1.0
+		battery = maxf(battery - delta * rate, 0.0)
 		if battery == 0.0:
 			light_on = false
 

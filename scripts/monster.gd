@@ -1,8 +1,10 @@
 class_name Monster
 extends CharacterBody2D
-## El Nonato: se congela si una linterna lo ilumina y caza a oscuras.
-## Las lámparas fijas no lo congelan: no entra en su luz y, si se encienden con él dentro,
-## sale de ella. Así una zona iluminada es refugio pero nunca una trampa permanente.
+## El Nonato: caza a oscuras y huye de las linternas.
+## Al darle una linterna se aturde 0,5 s, recula fuera del haz y busca otra ruta: las casillas
+## por donde le dio la luz le cuestan más durante 6 s. Prefiere a quien no le está apuntando,
+## así que un jugador vigilando no protege al resto.
+## Las lámparas fijas son refugio: no entra en su luz y, si se encienden con él dentro, sale.
 ## Existe en todos los equipos con el mismo nombre; la autoridad es el anfitrión.
 
 const SPEED := 110.0
@@ -15,12 +17,19 @@ const REPATH_TIME := 0.25
 const ROAM_TIME := 5.0
 const WAYPOINT_REACHED := 4.0
 const FREEZE_SOUND_COOLDOWN := 2.0
+const STUN_TIME := 0.5
+## Segundos sin luz necesarios para que la siguiente linterna vuelva a aturdirlo.
+const STUN_COOLDOWN := 1.5
+const RECOIL_SPEED := 100.0
+## Segundos que recuerda las casillas iluminadas al planear rutas.
+const LIT_MEMORY := 6.0
 ## Puntos del cuerpo que se comprueban contra las linternas. Basta con que uno esté iluminado.
 const PROBES: Array[Vector2] = [
 	Vector2(0, -10), Vector2(-12, -18), Vector2(12, -18), Vector2(-12, 2), Vector2(12, 2),
 ]
 
 var level: Level
+## Aturdido por una linterna. Se sincroniza: los demás lo ven temblar.
 var frozen := false
 
 var _path := PackedVector2Array()
@@ -34,18 +43,25 @@ var _last_pos := Vector2.ZERO
 var _crawl_sound: AudioStreamPlayer2D
 var _was_frozen := false
 var _freeze_cooldown := 0.0
+var _stun_timer := 0.0
+var _unlit_time := 99.0
+## Jugadores que le están dando con la linterna en este fotograma (solo en el anfitrión).
+var _watchers: Array[Player] = []
+## Jugadores que le iluminaron hace poco -> segundos que le quedan en la memoria.
+var _recent_watchers := {}
 
 @onready var sprite: Sprite2D = $Sprite
 
 
 func _ready() -> void:
+	add_to_group("monster")
 	_crawl_sound = Sfx.make_loop_2d(self, "monster_loop", -2.0, 300.0)
 
 
 func _physics_process(delta: float) -> void:
 	# Solo el anfitrión mueve al monstruo. Los demás reciben posición y estado.
 	if multiplayer.is_server():
-		frozen = _is_lit()
+		_update_light_reaction(delta)
 	_animate(delta)
 	if frozen:
 		velocity = Vector2.ZERO
@@ -56,6 +72,8 @@ func _physics_process(delta: float) -> void:
 		return
 	if level.is_lamp_zone(global_position):
 		_flee_light()
+	elif not _watchers.is_empty():
+		_recoil()
 	elif _retreat_timer > 0.0:
 		_retreat_timer -= delta
 		_retreat()
@@ -66,13 +84,47 @@ func _physics_process(delta: float) -> void:
 		sprite.flip_h = velocity.x < 0.0
 
 
-## Solo cuentan las linternas de los jugadores.
-func _is_lit() -> bool:
-	for player: Player in get_tree().get_nodes_in_group("players"):
-		for probe in PROBES:
-			if player.is_lighting(global_position + probe):
-				return true
+## True si la linterna de ese jugador le da en alguna parte del cuerpo.
+func is_lit_by(player: Player) -> bool:
+	for probe in PROBES:
+		if player.is_lighting(global_position + probe):
+			return true
 	return false
+
+
+## Solo en el anfitrión: aturdimiento corto al primer contacto y memoria de casillas iluminadas.
+func _update_light_reaction(delta: float) -> void:
+	_watchers.clear()
+	for player: Player in get_tree().get_nodes_in_group("players"):
+		if is_lit_by(player):
+			_watchers.append(player)
+	if _watchers.is_empty():
+		_unlit_time += delta
+	else:
+		if _unlit_time >= STUN_COOLDOWN:
+			_stun_timer = STUN_TIME
+		_unlit_time = 0.0
+		for player in _watchers:
+			level.mark_lit_path(player.global_position, global_position, LIT_MEMORY)
+			_recent_watchers[player] = LIT_MEMORY
+	for player in _recent_watchers.keys():
+		_recent_watchers[player] -= delta
+		if _recent_watchers[player] <= 0.0 or not is_instance_valid(player):
+			_recent_watchers.erase(player)
+	_stun_timer = maxf(_stun_timer - delta, 0.0)
+	frozen = _stun_timer > 0.0
+	level.tick_lit(delta)
+
+
+## Se aleja de quien le ilumina y pide ruta nueva en cuanto sale del haz.
+func _recoil() -> void:
+	var away := Vector2.ZERO
+	for player in _watchers:
+		away += player.global_position.direction_to(global_position)
+	velocity = away.normalized() * RECOIL_SPEED
+	_path = PackedVector2Array()
+	_repath_timer = 0.0
+	_stop_at_light()
 
 
 func _hunt(delta: float) -> void:
@@ -143,13 +195,21 @@ func _stop_at_light() -> void:
 
 
 ## Jugador más cercano que puede actuar y no está a salvo bajo una lámpara.
+## Quien le acaba de iluminar solo es objetivo si no queda nadie más.
 ## El ruido de reparar un generador atrae al monstruo: quien repara tiene prioridad.
 func _nearest_player() -> Player:
+	var best := _pick_target(true)
+	return best if best != null else _pick_target(false)
+
+
+func _pick_target(skip_watchers: bool) -> Player:
 	var best: Player = null
 	var best_dist := INF
 	var best_repairing := false
 	for player: Player in get_tree().get_nodes_in_group("players"):
 		if not player.can_act() or level.is_lamp_zone(player.global_position):
+			continue
+		if skip_watchers and _recent_watchers.has(player):
 			continue
 		var repairing := player.is_repairing()
 		if best_repairing and not repairing:

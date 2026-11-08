@@ -231,7 +231,7 @@ func _build_monster_grid() -> void:
 func set_lamp_zone(id: int, center: Vector2, radius: float, active: bool) -> void:
 	if active == _lamp_zones.has(id):
 		return
-	var cells := _lit_cells(center, radius + ZONE_MARGIN)
+	var cells := _cells_lit_by(center, radius + ZONE_MARGIN)
 	if active:
 		_lamp_zones[id] = [center, radius]
 		for c in cells:
@@ -283,7 +283,7 @@ func random_monster_point() -> Vector2:
 	return monster_spawn
 
 
-func _lit_cells(center: Vector2, radius: float) -> Array[Vector2i]:
+func _cells_lit_by(center: Vector2, radius: float) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
 	var origin := world_to_cell(center)
 	var r := ceili(radius / TILE)
@@ -376,3 +376,34 @@ func _add_runs(holder: Node2D, line: int, side: Vector2i, to_points: Callable, v
 func _blocks_light(cell: Vector2i) -> bool:
 	var c := _char_at(cell)
 	return c == "#" or (c == "X" and not door_open)
+
+
+## Las casillas por donde una linterna iluminó al monstruo le cuestan más al planear rutas
+## durante unos segundos, así busca otro camino. Recorre la línea jugador-monstruo y el
+## contorno del monstruo.
+const LIT_WEIGHT := 6.0
+var _lit_cells := {}
+
+
+func mark_lit_path(from: Vector2, to: Vector2, seconds: float) -> void:
+	var a := world_to_cell(from)
+	var b := world_to_cell(to)
+	var steps := maxi(maxi(absi(b.x - a.x), absi(b.y - a.y)), 1)
+	var cells: Array[Vector2i] = []
+	for i in steps + 1:
+		cells.append(Vector2i(Vector2(a).lerp(Vector2(b), float(i) / steps).round()))
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			cells.append(b + Vector2i(dx, dy))
+	for c in cells:
+		if monster_grid.is_in_boundsv(c):
+			_lit_cells[c] = seconds
+			monster_grid.set_point_weight_scale(c, LIT_WEIGHT)
+
+
+func tick_lit(delta: float) -> void:
+	for c: Vector2i in _lit_cells.keys():
+		_lit_cells[c] -= delta
+		if _lit_cells[c] <= 0.0:
+			_lit_cells.erase(c)
+			monster_grid.set_point_weight_scale(c, 1.0)

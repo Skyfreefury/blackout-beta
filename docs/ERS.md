@@ -8,7 +8,7 @@ Especificación de Requisitos de Software, versión 0.3, 2026-11-08.
 Este documento fija qué debe hacer la versión mínima jugable (MVP) del juego. Sirve de referencia para programar, probar y decidir qué queda fuera.
 
 ### 1.2 Alcance
-Blackout es un juego cooperativo de terror para 1 a 4 jugadores, con vista desde arriba y arte pixel. Los jugadores recorren un hospital abandonado a oscuras para reactivar 3 generadores y escapar. Un monstruo los persigue y solo se mueve cuando ninguna luz lo ilumina.
+Blackout es un juego cooperativo de terror para 1 a 4 jugadores, con vista desde arriba y arte pixel. Los jugadores recorren un hospital abandonado a oscuras para reactivar 3 generadores y escapar. Un monstruo los persigue a oscuras y huye de las linternas.
 
 ### 1.3 Definiciones
 | Término | Significado |
@@ -28,7 +28,7 @@ Core Keeper y Soul Knight (vista y escala del pixel art), Lethal Company (tensi�
 1. El anfitrión crea la sala. Los demás se unen con su IP.
 2. Todos aparecen en la entrada de urgencias del hospital con la linterna cargada al 100%.
 3. El grupo busca y repara 3 generadores. Cada reparación tarda 10 s manteniendo la tecla de interactuar y hace ruido.
-4. Cada generador reparado enciende las luces fijas de su zona. El monstruo no entra en esa luz y, si se enciende con él dentro, sale de ella. Solo las linternas lo congelan.
+4. Cada generador reparado enciende las luces fijas de su zona. El monstruo no entra en esa luz y, si se enciende con él dentro, sale de ella.
 5. Con los 3 generadores activos se abre la puerta de salida.
 6. Se gana si al menos 1 jugador cruza la salida. Se pierde si todos mueren.
 
@@ -75,8 +75,8 @@ Grupos de 2 a 4 amigos que juegan desde su casa, hablando por Discord. También 
 ### 3.3 Monstruo
 | ID | Requisito | Prioridad |
 |---|---|---|
-| RF-20 | El monstruo se mueve solo cuando no está iluminado. | Alta |
-| RF-21 | Iluminado, queda congelado al instante y emite un sonido de tensión. | Alta |
+| RF-20 | Al darle una linterna se aturde 0,5 s, recula fuera del haz y busca otra ruta. Las casillas donde le dio la luz le cuestan más durante 6 s. | Alta |
+| RF-21 | Prefiere atacar a quien no le ha iluminado en los últimos 6 s. Apuntarle gasta la linterna al doble de velocidad. | Alta |
 | RF-22 | A oscuras persigue al jugador más cercano por el mapa de navegación a 110 px/s. | Alta |
 | RF-23 | El ruido de reparar un generador atrae al monstruo hacia ese punto. | Media |
 | RF-24 | Al tocar a un jugador lo deja derribado y se aleja 3 s antes de volver a cazar. | Alta |
