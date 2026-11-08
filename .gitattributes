@@ -1,0 +1,7 @@
+# Godot guarda escenas y scripts con saltos de línea LF
+* text=auto eol=lf
+
+*.png binary
+*.wav binary
+*.ogg binary
+*.ttf binary

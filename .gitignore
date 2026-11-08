@@ -1,0 +1,14 @@
+# Caché e importaciones de Godot 4
+.godot/
+*.translation
+
+# Builds exportados
+builds/
+
+# Imágenes en bruto de Gemini antes de procesar
+art/raw/
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
