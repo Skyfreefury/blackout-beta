@@ -11,6 +11,7 @@ const ACTIONS := {
 	"toggle_light": [KEY_F],
 	"interact": [KEY_E],
 	"restart": [KEY_R],
+	"toggle_fullscreen": [KEY_F11],
 }
 
 

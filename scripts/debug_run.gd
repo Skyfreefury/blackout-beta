@@ -36,6 +36,7 @@ func _ready() -> void:
 		print("RESULT error=sin_jugador_local id=%d" % multiplayer.get_unique_id())
 		get_tree().quit(1)
 		return
+	Net.allow_teleport = _args.has("allow-teleport")
 	if _args.has("nomonster"):
 		main.monster.process_mode = Node.PROCESS_MODE_DISABLED
 	await _setup(main)
@@ -70,6 +71,9 @@ func _setup(main: Node) -> void:
 	if _args.has("walk"):
 		player.move_override = Vector2.RIGHT
 		player.aim_override = player.global_position + Vector2(200, 0)
+	if _args.has("cheat"):
+		# Salto imposible de 160 px: el anfitrión debe devolver al jugador a su sitio.
+		get_tree().create_timer(1.0).timeout.connect(func(): player.global_position += Vector2(160, 0))
 	if _args.has("pickup"):
 		player.battery = 10.0
 		player.global_position = level.battery_spawns[0]

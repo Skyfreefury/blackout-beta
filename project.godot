@@ -20,6 +20,7 @@ config/icon="res://art/sprites/icon.png"
 Controls="*res://scripts/controls.gd"
 Net="*res://scripts/net.gd"
 Sfx="*res://scripts/sfx.gd"
+Settings="*res://scripts/settings.gd"
 
 [display]
 
@@ -35,3 +36,8 @@ window/stretch/scale_mode="integer"
 textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+
+[gui]
+
+theme/custom_font="res://art/font/blackout.fnt"
+theme/default_font_antialiasing=0

@@ -145,7 +145,7 @@ func _build_pause() -> void:
 func _build_end() -> void:
 	var box := VBoxContainer.new()
 	_end_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_end_text.add_theme_font_size_override("font_size", 12)
+	_end_text.add_theme_font_size_override("font_size", 16)
 	box.add_child(_end_text)
 	_end_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_end_hint)

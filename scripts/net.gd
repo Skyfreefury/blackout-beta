@@ -21,6 +21,8 @@ var players := {}
 var last_error := ""
 ## IP local donde escucha el anfitrión. Vacía escucha en todas las interfaces.
 var bind_ip := ""
+## Desactiva la validación de movimiento. Solo para pruebas automáticas que teletransportan.
+var allow_teleport := false
 
 var _loaded := {}
 var _in_game := false

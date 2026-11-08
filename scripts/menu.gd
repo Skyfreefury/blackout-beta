@@ -17,6 +17,10 @@ var _player_list := Label.new()
 var _start_button := Button.new()
 var _join_timer := Timer.new()
 var _auto_start_at := 0
+var _options_box := VBoxContainer.new()
+var _volume_slider := HSlider.new()
+var _volume_label := Label.new()
+var _fullscreen_check := CheckBox.new()
 
 
 func _ready() -> void:
@@ -51,7 +55,7 @@ func _build_ui() -> void:
 
 	root.add_child(_main_box)
 	_name_edit.placeholder_text = "Tu nombre"
-	_name_edit.text = Net.player_name
+	_name_edit.text = Settings.player_name
 	_name_edit.max_length = Net.NAME_MAX
 	_main_box.add_child(_name_edit)
 	_main_box.add_child(_button("Crear partida", _on_host_pressed))
@@ -61,7 +65,25 @@ func _build_ui() -> void:
 	join_row.add_child(_ip_edit)
 	join_row.add_child(_button("Unirse", _on_join_pressed))
 	_main_box.add_child(join_row)
+	_main_box.add_child(_button("Opciones", _show_options.bind(true)))
 	_main_box.add_child(_button("Salir", get_tree().quit))
+
+	root.add_child(_options_box)
+	_options_box.add_child(_volume_label)
+	_volume_slider.min_value = 0
+	_volume_slider.max_value = 100
+	_volume_slider.step = 5
+	_volume_slider.custom_minimum_size.x = 120
+	_volume_slider.value = Settings.volume * 100
+	_volume_slider.value_changed.connect(_on_volume_changed)
+	_options_box.add_child(_volume_slider)
+	_fullscreen_check.text = "Pantalla completa (F11)"
+	_fullscreen_check.button_pressed = Settings.fullscreen
+	_fullscreen_check.toggled.connect(_on_fullscreen_toggled)
+	_options_box.add_child(_fullscreen_check)
+	_options_box.add_child(_button("Volver", _show_options.bind(false)))
+	_options_box.visible = false
+	_update_volume_label()
 
 	root.add_child(_lobby_box)
 	_lobby_box.add_child(_lobby_title)
@@ -78,6 +100,29 @@ func _build_ui() -> void:
 	_join_timer.one_shot = true
 	_join_timer.timeout.connect(_on_join_failed.bind("Tiempo de espera agotado"))
 	add_child(_join_timer)
+
+
+func _show_options(open: bool) -> void:
+	_options_box.visible = open
+	_main_box.visible = not open
+	_fullscreen_check.set_pressed_no_signal(Settings.fullscreen)
+
+
+func _on_volume_changed(value: float) -> void:
+	Settings.volume = value / 100.0
+	Settings.apply()
+	Settings.save()
+	_update_volume_label()
+
+
+func _update_volume_label() -> void:
+	_volume_label.text = "Volumen %d%%" % roundi(Settings.volume * 100)
+
+
+func _on_fullscreen_toggled(on: bool) -> void:
+	Settings.fullscreen = on
+	Settings.apply()
+	Settings.save()
 
 
 func _button(text: String, callback: Callable) -> Button:
@@ -115,6 +160,9 @@ func _box(fill: Color, border := Color(0, 0, 0, 0)) -> StyleBoxFlat:
 func _read_name() -> void:
 	var clean := _name_edit.text.strip_edges().left(Net.NAME_MAX)
 	Net.player_name = clean if not clean.is_empty() else "Jugador"
+	if Settings.player_name != Net.player_name:
+		Settings.player_name = Net.player_name
+		Settings.save()
 
 
 func _on_host_pressed() -> void:
@@ -156,6 +204,7 @@ func _on_leave_pressed() -> void:
 func _show_lobby(in_lobby: bool) -> void:
 	_main_box.visible = not in_lobby
 	_lobby_box.visible = in_lobby
+	_options_box.visible = false
 	_refresh_lobby()
 
 

@@ -26,6 +26,11 @@ const REVIVE_TIME := 4.0
 const BLEED_OUT_TIME := 30.0
 ## Margen extra que acepta el anfitrión por el retraso de red al validar distancias.
 const NET_TOLERANCE := 10.0
+## Validación de movimiento en el anfitrión: velocidad máxima x 1,3 y hasta 24 px de más
+## por paquetes que llegan juntos. Pasado eso, el jugador vuelve a su última posición válida.
+const SPEED_SLACK := 1.3
+const BURST_ALLOWANCE := 24.0
+const CORRECTION_COOLDOWN := 0.2
 const WOUNDED_TINT := Color(1.0, 0.7, 0.7)
 const ANIM_FPS := 8.0
 const SHEET_PATH := "res://art/sprites/player_%d.png"
@@ -75,6 +80,10 @@ var _server_target: Node = null
 var _last_worked_frame := -10
 var _anim_time := 0.0
 var _last_pos := Vector2.ZERO
+# Solo en el anfitrión, para jugadores remotos.
+var _valid_pos := Vector2.ZERO
+var _move_budget := 0.0
+var _correction_timer := 0.0
 # Valores del fotograma anterior para sonar solo en los cambios.
 var _prev_step := 0
 var _prev_light := true
@@ -101,6 +110,7 @@ func _ready() -> void:
 	sprite.texture = load(SHEET_PATH % clampi(color_index, 0, 3))
 	camera.enabled = is_local()
 	_last_pos = global_position
+	_valid_pos = global_position
 
 
 func is_local() -> bool:
@@ -133,8 +143,37 @@ func _physics_process(delta: float) -> void:
 			light_on = false
 			_stop_hold()
 	if multiplayer.is_server():
+		if not is_local():
+			_validate_movement(delta)
 		_server_tick(delta)
 	_update_visuals(delta)
+
+
+## Solo en el anfitrión: rechaza saltos de posición que no se pueden hacer corriendo.
+func _validate_movement(delta: float) -> void:
+	_correction_timer = maxf(_correction_timer - delta, 0.0)
+	if not is_active() or Net.allow_teleport:
+		_valid_pos = global_position
+		return
+	var max_speed := RUN_SPEED if can_act() else 0.0
+	_move_budget = minf(_move_budget + max_speed * SPEED_SLACK * delta, max_speed * 0.5 + BURST_ALLOWANCE)
+	var moved := global_position.distance_to(_valid_pos)
+	if moved <= _move_budget + 0.5:
+		_move_budget -= moved
+		_valid_pos = global_position
+		return
+	if _correction_timer == 0.0:
+		_correction_timer = CORRECTION_COOLDOWN
+		_correct_position.rpc_id(get_multiplayer_authority(), _valid_pos)
+	global_position = _valid_pos
+	_move_budget = 0.0
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _correct_position(pos: Vector2) -> void:
+	if _sender() == 1:
+		global_position = pos
+		_last_pos = pos
 
 
 func _unhandled_input(event: InputEvent) -> void:
