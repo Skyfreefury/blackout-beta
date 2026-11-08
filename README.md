@@ -6,6 +6,7 @@ Los jugadores recorren un hospital abandonado a oscuras para reactivar 3 generad
 
 ## Documentación
 - [ERS](docs/ERS.md): requisitos de la versión mínima jugable.
+- [Ideas](docs/IDEAS.md): ideas anotadas para próximas versiones.
 
 ## Jugar en red
 1. El anfitrión pulsa Crear partida. Su IP local se ve con `ipconfig` (IPv4).
