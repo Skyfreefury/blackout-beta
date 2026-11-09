@@ -1,6 +1,6 @@
 # Ideas para próximas versiones
 
-Ideas anotadas el 2026-11-08. Implementado: roles, hospital generado al azar, tareas, tamaño del mapa y Nonatos por nivel. Del modo extracción ya está la cuota de botín por nivel. Pendiente: gastar el botín entre partidas.
+Ideas anotadas el 2026-11-08. Implementado: roles, hospital generado al azar, tareas, tamaño del mapa y Nonatos por nivel. Del modo extracción ya está la cuota de botín por nivel. Gastar el botín entre niveles: hecho con la tienda de la pantalla final.
 
 ## Mapas que cambian en cada partida
 | Opción | Qué cambia | Trabajo |
@@ -37,6 +37,7 @@ Antes: colocación aleatoria. El hospital marca 3 sitios por generador, 3 para e
 - Cambios: objetos de valor repartidos por el hospital, inventario con peso o huecos limitados, varias salidas que se abren en momentos distintos.
 - Implementado: 4 objetos de valor (muestras 20 a 40 €, instrumental 40 a 70 €, reloj 80 a 120 €, microscopio 120 a 180 €), mochila de 3 huecos, carro de entrega y cuota de 100 € + 100 € por nivel para abrir la salida. El botín de los niveles superados se suma.
 - Lo que no se saca se pierde al morir. Lo extraído se gasta entre partidas en mejoras: linternas, más batería, botiquines.
+- Implementado el 2026-11-09 en `scripts/shop.gd`: tienda en la pantalla final con el banco común. Pila +25% (120 €, 2 veces), zapatillas +10% velocidad y +20% aguante (150 €, 2), mochila +1 hueco (200 €, 2) y botiquín que levanta solo en 6 s (180 €, 1 uso). Cada compra repetida cuesta el doble, el triple... El anfitrión valida cada compra. Las mejoras duran la racha y se pierden al volver al nivel 1; no se guardan en disco.
 - Riesgo: necesita progreso guardado entre partidas y equilibrar la economía. Es el cambio más grande de esta lista.
 
 ## Dificultad por número de jugadores (implementado)

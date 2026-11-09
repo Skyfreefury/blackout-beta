@@ -23,7 +23,11 @@ var _flash := Label.new()
 var _flash_timer := 0.0
 var _pause := PanelContainer.new()
 var _end := PanelContainer.new()
+var _end_title := Label.new()
 var _end_text := Label.new()
+var _shop_title := Label.new()
+## Mejora -> botón de compra.
+var _shop_buttons := {}
 var _end_hint := Label.new()
 var _role_label := Label.new()
 var _bag := Label.new()
@@ -65,7 +69,7 @@ func _process(delta: float) -> void:
 	_status.text = "" if _end.visible else _status_text()
 	_bag.position.y = size.y - 30
 	_bag.text = "" if player == null or player.carried_values.is_empty() \
-		else "Mochila %d/%d  %d €" % [player.carried_values.size(), Player.MAX_CARRY, player.carried_total()]
+		else "Mochila %d/%d  %d €" % [player.carried_values.size(), player.max_carry, player.carried_total()]
 	queue_redraw()
 
 
@@ -85,18 +89,32 @@ func show_end(victory: bool, time: float, survivors: PackedStringArray, is_host:
 	_pause.visible = false
 	var minutes := int(time) / 60
 	var seconds := int(time) % 60
-	var lines := PackedStringArray([
-		("NIVEL %d SUPERADO" % level) if victory else "NADIE HA SALIDO",
-		"Tiempo %d:%02d" % [minutes, seconds],
-	])
+	_end_title.text = ("NIVEL %d SUPERADO" % level) if victory else "NADIE HA SALIDO"
+	_end_title.add_theme_color_override("font_color", STAMINA_COLOR if victory else ACCENT)
+	var lines := PackedStringArray(["Tiempo %d:%02d" % [minutes, seconds]])
 	if victory:
 		lines.append("Supervivientes: " + ", ".join(survivors))
-		lines.append("Botín total: %d €" % Net.bank)
 	_end_text.text = "\n".join(lines)
-	_end_text.add_theme_color_override("font_color", STAMINA_COLOR if victory else ACCENT)
+	_refresh_shop()
 	var next := ("R: nivel %d" % (level + 1)) if victory else ("R: repetir nivel %d" % level)
 	_end_hint.text = (next + "   Esc: menú") if is_host else "Esperando al anfitrión   Esc: menú"
 	_end.visible = true
+
+
+## Precios, compras y banco del jugador local.
+func _refresh_shop() -> void:
+	var id := multiplayer.get_unique_id()
+	_shop_title.text = "TIENDA   Banco: %d €" % Net.bank
+	for item: String in _shop_buttons:
+		var b: Button = _shop_buttons[item]
+		var owned := Net.upgrade_level(id, item)
+		var top: int = Shop.ITEMS[item].max
+		var cost := Shop.price(item, owned)
+		if owned >= top:
+			b.text = "%s %d/%d" % [Shop.ITEMS[item].name, owned, top]
+		else:
+			b.text = "%s %d/%d  %d €" % [Shop.ITEMS[item].name, owned, top, cost]
+		b.disabled = owned >= top or Net.bank < cost
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -176,12 +194,29 @@ func _build_pause() -> void:
 
 func _build_end() -> void:
 	var box := VBoxContainer.new()
+	_end_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_end_title.add_theme_font_size_override("font_size", 16)
+	box.add_child(_end_title)
 	_end_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_end_text.add_theme_font_size_override("font_size", 16)
 	box.add_child(_end_text)
+	# Tienda: cada jugador compra sus mejoras con el banco común.
+	_shop_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_shop_title.add_theme_color_override("font_color", BATTERY_COLOR)
+	box.add_child(_shop_title)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 3)
+	for item: String in Shop.ids():
+		var b := _button("", Net.buy.bind(item))
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(b)
+		_shop_buttons[item] = b
+	box.add_child(grid)
 	_end_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_end_hint)
 	_end.add_child(box)
+	Net.shop_changed.connect(_refresh_shop)
 	_end.visible = false
 	_place_center(_end)
 
@@ -212,6 +247,8 @@ func _make_theme() -> Theme:
 	t.set_stylebox("hover", "Button", _box(Color("34384a")))
 	t.set_stylebox("pressed", "Button", _box(Color("5a2a2a")))
 	t.set_stylebox("focus", "Button", _box(Color(0, 0, 0, 0), Color("8a93a0")))
+	t.set_stylebox("disabled", "Button", _box(Color("121319")))
+	t.set_color("font_disabled_color", "Button", Color("4a4f5c"))
 	return t
 
 

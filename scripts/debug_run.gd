@@ -10,6 +10,8 @@ extends Node
 ##   --crowd=N                              Nonatos como con N jugadores (scream: chillido)
 ##   --seed=N                               reparto de generadores, monstruo y pilas
 ##   --role=N                               rol del jugador local (índice de Roles.LIST)
+##   --scenario=shop                        compra mejoras con 1000 € y prueba el botiquín
+##   --bank=N   (anfitrión) pone N € en el banco común   --buy=mejora   compra al segundo
 ## En red (lanzando el menú con --host=N o --join=IP):
 ##   --walk     el jugador local camina a la derecha
 ##   --pickup   el jugador local va a la pila 0 y la pide al anfitrión
@@ -80,6 +82,10 @@ func _setup(main: Node) -> void:
 	if _args.has("walk"):
 		player.move_override = Vector2.RIGHT
 		player.aim_override = player.global_position + Vector2(200, 0)
+	if _args.has("bank") and multiplayer.is_server():
+		Net._sync_shop.rpc(int(_args["bank"]), Net.upgrades)
+	if _args.has("buy"):
+		get_tree().create_timer(1.0).timeout.connect(Net.buy.bind(_args["buy"]))
 	if _args.has("pause"):
 		main.hud.toggle_pause()
 	if _args.has("cheat"):
@@ -171,6 +177,15 @@ func _setup(main: Node) -> void:
 				player.start_interact()
 			else:
 				player.hit()
+		"shop":
+			# Compras con 1000 €: 120 + 240 de pila, 200 de mochila y 180 de botiquín.
+			Net.bank = 1000
+			for item in ["battery", "battery", "battery", "bag", "medkit"]:
+				Net.buy(item)
+			player._apply_role()
+			# El botiquín levanta al jugador solo; el segundo golpe ya mata.
+			player.hit()
+			main.hud.show_end(true, 125.0, PackedStringArray(["Jugador"]), true, 1)
 		"scream":
 			# Nonato mejorado iluminado de cerca: debe chillar y apagar la linterna.
 			monster.enhanced = true
@@ -233,6 +248,7 @@ func _report(main: Node) -> void:
 	line += " role=%d gen0=%.2f battery_max=%.0f run=%.0f angle=%.0f" % [p.role, main.tasks[0].progress if not main.tasks.is_empty() else 0.0, p.battery_max, p.run_speed, p.light_angle]
 	line += " money=%d quota=%d carried=%d loot=%d" % [main.money, main.quota, p.carried_values.size(), get_tree().get_nodes_in_group("loot").size()]
 	line += " monsters=%d enhanced=%s blind=%.1f light=%s" % [main.monsters.size(), monster.enhanced, p.blind_time, p.light_on]
+	line += " bank=%d upgrades=%s max_carry=%d" % [Net.bank, Net.upgrades, p.max_carry]
 	line += " level=%d tasks=%s" % [Net.game_level, ",".join((main.tasks as Array).map(func(t): return t.kind))]
 	line += " seed=%d gens_at=%s" % [main.level.map_seed, ",".join((main.tasks as Array).map(func(g): return str(main.level.world_to_cell(g.global_position))))]
 	line += " monster_dist=%.0f watchers=%d vel=(%.0f,%.0f) target=%s" % [monster.global_position.distance_to(p.global_position), monster._watchers.size(), monster.velocity.x, monster.velocity.y, monster._target]

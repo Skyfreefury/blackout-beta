@@ -29,6 +29,7 @@ const HELP := [
 	["i", "res://art/sprites/battery.png", "Pila. E la coge y recarga la mitad de la linterna."],
 	["t", "ROLES\nEn la sala de espera: enfermero/a, corredor/a, técnico/a y vigía. Cada uno tiene una ventaja y una desventaja."],
 	["t", "NIVELES\nCada partida genera un hospital nuevo. Cada nivel suma una tarea y 100 € de cuota. Desde el nivel 2 el hospital es mayor y desde el 3 hay un Nonato más (otro cada 2 niveles). Ganar pasa al siguiente."],
+	["t", "TIENDA\nAl acabar un nivel, el botín entregado va al banco común. Cada jugador compra sus mejoras con ese banco. Duran mientras ganéis niveles y se pierden al empezar desde el nivel 1.\nPila +25%: más batería. Zapatillas: +10% de velocidad y +20% de aguante. Mochila +1: un hueco más. Botiquín: al caer te levantas solo en 6 s, un uso."],
 	["t", "CONTROLES\nWASD mover, ratón apuntar, ESPACIO correr, Q linterna, E usar, ESC pausa, F11 pantalla completa."],
 ]
 ## Ancho de la columna de dibujos en las instrucciones.

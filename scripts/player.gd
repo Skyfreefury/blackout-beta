@@ -29,6 +29,10 @@ const MONSTER_DRAIN := 2.0
 const PICKUP_RADIUS := 14.0
 ## Huecos de la mochila. Cada objeto llevado quita un 8% de velocidad.
 const MAX_CARRY := 3
+## Huecos de la mochila con las mejoras de la tienda.
+var max_carry := MAX_CARRY
+## Segundos que le quedan al botiquín para levantar al jugador. Solo en el anfitrión.
+var _medkit_time := 0.0
 const CARRY_SLOW := 0.08
 const CART_RANGE := 22.0
 const REVIVE_RANGE := 18.0
@@ -136,6 +140,14 @@ func _apply_role() -> void:
 	run_speed = RUN_SPEED * Roles.mult(role, "run")
 	light_angle = LIGHT_ANGLE * Roles.mult(role, "angle")
 	monster_drain = MONSTER_DRAIN * Roles.mult(role, "monster_drain")
+	# Mejoras de la tienda (Shop), compradas con el botín de niveles anteriores.
+	var id := get_multiplayer_authority()
+	battery_max *= 1.0 + Shop.BATTERY_STEP * Net.upgrade_level(id, "battery")
+	var shoes := Net.upgrade_level(id, "shoes")
+	walk_speed *= 1.0 + Shop.SPEED_STEP * shoes
+	run_speed *= 1.0 + Shop.SPEED_STEP * shoes
+	stamina_max *= 1.0 + Shop.STAMINA_STEP * shoes
+	max_carry = MAX_CARRY + Net.upgrade_level(id, "bag")
 	battery = battery_max
 	stamina = stamina_max
 	_prev_battery = battery
@@ -251,6 +263,10 @@ func hit() -> void:
 		down_time = BLEED_OUT_TIME
 		revive_progress = 0.0
 		is_down = true
+		var id := get_multiplayer_authority()
+		if Net.upgrade_level(id, "medkit") > 0:
+			Net.consume_upgrade(id, "medkit")
+			_medkit_time = Shop.MEDKIT_TIME
 
 
 func carried_total() -> int:
@@ -299,7 +315,7 @@ func start_interact() -> void:
 		if global_position.distance_to(pickup.global_position) <= PICKUP_RADIUS:
 			_request_pickup.rpc_id(1, pickup.get_path())
 			return
-	if carried_values.size() < MAX_CARRY:
+	if carried_values.size() < max_carry:
 		for loot: Loot in get_tree().get_nodes_in_group("loot"):
 			if global_position.distance_to(loot.global_position) <= PICKUP_RADIUS:
 				_request_loot.rpc_id(1, loot.get_path())
@@ -366,8 +382,12 @@ func _server_tick(delta: float) -> void:
 		if down_time == 0.0:
 			is_down = false
 			is_dead = true
+		# El botiquín llena la barra de reanimación solo, en MEDKIT_TIME segundos.
+		if _medkit_time > 0.0:
+			_medkit_time = maxf(_medkit_time - delta, 0.0)
+			add_work(delta * REVIVE_TIME / Shop.MEDKIT_TIME)
 		# La reanimación se pierde si nadie la mantiene.
-		if Engine.get_physics_frames() - _last_worked_frame > 2:
+		elif Engine.get_physics_frames() - _last_worked_frame > 2:
 			revive_progress = 0.0
 	if _server_target != null:
 		var valid: bool = is_instance_valid(_server_target) and can_act() and _server_target.needs_work() \
@@ -489,7 +509,7 @@ func _request_loot(loot_path: NodePath) -> void:
 	if not multiplayer.is_server() or _sender() != get_multiplayer_authority() or not can_act():
 		return
 	var loot := get_node_or_null(loot_path) as Loot
-	if loot == null or loot.is_queued_for_deletion() or carried_values.size() >= MAX_CARRY:
+	if loot == null or loot.is_queued_for_deletion() or carried_values.size() >= max_carry:
 		return
 	if global_position.distance_to(loot.global_position) > PICKUP_RADIUS + NET_TOLERANCE:
 		return

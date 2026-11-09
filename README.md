@@ -23,7 +23,7 @@ Controles: WASD mover, ratón apuntar, Q o clic derecho linterna (F también val
 ```bash
 godot --headless --path . res://scenes/main.tscn -- --scenario=repair --nomonster --frames=700
 ```
-Escenarios del hospital: `repair`, `door`, `revive`, `bleed` (con `--nomonster`) `lure`, `loot`, `drop` y `scream`. `--crowd=N` pone los Nonatos de una partida de N jugadores. `--seed=N` fija el reparto del mapa. Los escenarios usan el mapa fijo `maps/hospital.txt`; `--procgen` usa el hospital aleatorio de `scripts/hospital_gen.gd`. `godot --headless --path . --script res://tools/check_hospital_gen.gd -- 200` valida 200 semillas por tamaño. `--level=N` deja N + 1 tareas; sin él quedan las 10. `--role=N` elige el rol (0 enfermero/a, 1 corredor/a, 2 técnico/a, 3 vigía). Escenarios de luz con `--map=res://maps/test.txt`: `lit`, `dark`, `chase`, `lamp`. Todas las opciones en `scripts/debug_run.gd`.
+Escenarios del hospital: `repair`, `door`, `revive`, `bleed` (con `--nomonster`) `lure`, `loot`, `drop` y `scream`. `--crowd=N` pone los Nonatos de una partida de N jugadores. `--seed=N` fija el reparto del mapa. Los escenarios usan el mapa fijo `maps/hospital.txt`; `--procgen` usa el hospital aleatorio de `scripts/hospital_gen.gd`. `godot --headless --path . --script res://tools/check_hospital_gen.gd -- 200` valida 200 semillas por tamaño. `--level=N` deja N + 1 tareas; sin él quedan las 10. `--scenario=shop` prueba la tienda; en red, `--bank=N` en el anfitrión y `--buy=mejora` en un cliente. `--role=N` elige el rol (0 enfermero/a, 1 corredor/a, 2 técnico/a, 3 vigía). Escenarios de luz con `--map=res://maps/test.txt`: `lit`, `dark`, `chase`, `lamp`. Todas las opciones en `scripts/debug_run.gd`.
 
 ## Ramas
 - `main`: versiones estables y probadas.

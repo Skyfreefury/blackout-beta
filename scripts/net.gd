@@ -7,6 +7,8 @@ signal players_changed
 signal connection_failed(reason: String)
 ## Solo en el anfitrión: todos los jugadores han cargado la escena de juego.
 signal all_loaded
+## El banco o las mejoras compradas han cambiado (ver Shop).
+signal shop_changed
 
 const PORT := 7777
 const MAX_PLAYERS := 4
@@ -33,6 +35,8 @@ var map_seed := 0
 var game_level := 1
 ## Botín total entregado en los niveles superados desde el nivel 1.
 var bank := 0
+## Mejoras de la tienda: id de red -> {mejora: veces comprada}. Las decide el anfitrión.
+var upgrades := {}
 
 var _loaded := {}
 var _in_game := false
@@ -157,7 +161,57 @@ func _load_game(seed_value: int, level: int) -> void:
 	game_level = level
 	if level == 1:
 		bank = 0
+		upgrades = {}
 	get_tree().change_scene_to_file(GAME_SCENE)
+
+
+## Veces que un jugador ha comprado una mejora.
+func upgrade_level(id: int, item: String) -> int:
+	return upgrades.get(id, {}).get(item, 0)
+
+
+## Compra una mejora para el jugador local con el banco común. Decide el anfitrión.
+func buy(item: String) -> void:
+	if multiplayer.is_server():
+		_buy_for(multiplayer.get_unique_id(), item)
+	else:
+		_request_buy.rpc_id(1, item)
+
+
+@rpc("any_peer", "reliable")
+func _request_buy(item: String) -> void:
+	if multiplayer.is_server():
+		_buy_for(multiplayer.get_remote_sender_id(), item)
+
+
+func _buy_for(id: int, item: String) -> void:
+	if not Shop.ITEMS.has(item) or not players.has(id):
+		return
+	var owned := upgrade_level(id, item)
+	var cost := Shop.price(item, owned)
+	if owned >= Shop.ITEMS[item].max or bank < cost:
+		return
+	var mine: Dictionary = upgrades.get(id, {}).duplicate()
+	mine[item] = owned + 1
+	upgrades[id] = mine
+	_sync_shop.rpc(bank - cost, upgrades)
+
+
+## Solo en el anfitrión: gasta una unidad de una mejora de un solo uso (botiquín).
+func consume_upgrade(id: int, item: String) -> void:
+	if not multiplayer.is_server() or upgrade_level(id, item) <= 0:
+		return
+	var mine: Dictionary = upgrades[id].duplicate()
+	mine[item] -= 1
+	upgrades[id] = mine
+	_sync_shop.rpc(bank, upgrades)
+
+
+@rpc("authority", "call_local", "reliable")
+func _sync_shop(new_bank: int, new_upgrades: Dictionary) -> void:
+	bank = new_bank
+	upgrades = new_upgrades
+	shop_changed.emit()
 
 
 @rpc("any_peer", "reliable")
