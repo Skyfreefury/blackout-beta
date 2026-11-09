@@ -1,6 +1,6 @@
 # Ideas para próximas versiones
 
-Ideas anotadas el 2026-11-08. Implementado: roles, colocación aleatoria y tareas por nivel. Del modo extracción ya está la cuota de botín por nivel. Pendiente: tamaño del mapa y número de monstruos por nivel, y gastar el botín entre partidas.
+Ideas anotadas el 2026-11-08. Implementado: roles, hospital generado al azar, tareas, tamaño del mapa y Nonatos por nivel. Del modo extracción ya está la cuota de botín por nivel. Pendiente: gastar el botín entre partidas.
 
 ## Mapas que cambian en cada partida
 | Opción | Qué cambia | Trabajo |
@@ -9,7 +9,9 @@ Ideas anotadas el 2026-11-08. Implementado: roles, colocación aleatoria y tarea
 | Salas intercambiables | El plano se mantiene; cada hueco recibe una sala de un catálogo (quirófano, morgue, farmacia...) | Medio |
 | Generación completa | Salas y pasillos nuevos cada vez | Alto |
 
-Colocación aleatoria implementada. El hospital marca 3 sitios por generador, 3 para el monstruo y 14 para pilas.
+Generación completa implementada el 2026-11-09 en `scripts/hospital_gen.gd`. Mantiene tres franjas (urgencias y alas, salas del medio, sótano) y sortea anchos de sala, puertas, escalera, muebles y sitios candidatos. Cada plano se valida como en `tools/gen_hospital_map.py`; si falla se genera otro, y tras 40 intentos se usa `maps/hospital.txt`. Tamaño: 48x34 en el nivel 1, 60x39 en los niveles 2 y 3, 74x45 desde el 4.
+
+Antes: colocación aleatoria. El hospital marca 3 sitios por generador, 3 para el monstruo y 14 para pilas.
 `scripts/level.gd` se queda con 1 de cada y 8 pilas. El anfitrión elige una semilla nueva en cada partida y la envía al resto, así todos ven el mismo mapa.
 `tools/gen_hospital_map.py` ya comprueba pasos y alcance del monstruo; serviría para validar cada mapa generado.
 
@@ -26,7 +28,8 @@ Colocación aleatoria implementada. El hospital marca 3 sitios por generador, 3 
 | 4 en adelante | +1 por nivel | Grande | +1 cada 2 niveles |
 
 - Implementado: catálogo de 10 en el hospital (3 generadores, 2 archivadores de 6 s, 2 ordenadores de 8 s, 3 válvulas de 5 s). Cada nivel deja nivel + 1 tareas. Ganar pasa al nivel siguiente y perder lo repite.
-- Pendiente: mapas más grandes y más monstruos por nivel. La llave y el ascensor necesitan inventario.
+- Implementado: mapas más grandes por nivel y Nonatos por nivel (+1 desde el nivel 3 y otro cada 2 niveles, sumados a los de jugadores, tope 4).
+- Pendiente: la llave y el ascensor necesitan inventario.
 - Necesitaba: tareas como objetos con el mismo sistema de "mantener E" que los generadores, y monstruos que no se estorben entre sí.
 
 ## Modo extracción con botín (extraction looter)

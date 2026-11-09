@@ -85,7 +85,7 @@ Grupos de 2 a 4 amigos que juegan desde su casa, hablando por Discord. También 
 ### 3.4 Objetivos y estados
 | ID | Requisito | Prioridad |
 |---|---|---|
-| RF-30 | El mapa contiene 3 generadores en zonas distintas. | Alta |
+| RF-30 | El mapa contiene 3 generadores en zonas distintas. Cada partida genera un hospital nuevo con la semilla del anfitrión (scripts/hospital_gen.gd): 48, 60 o 74 casillas de ancho según el nivel. | Alta |
 | RF-31 | Reparar exige mantener E durante 10 s. Soltar la tecla guarda el progreso. | Alta |
 | RF-32 | Un generador reparado enciende las luces fijas de su zona de forma permanente. | Alta |
 | RF-33 | Con 3 generadores activos se abre la salida y suena un aviso para todos. | Alta |
@@ -144,7 +144,7 @@ Los pasillos y puertas miden al menos 3 casillas (48 px) de ancho para que el mo
 ## 6. Fuera del MVP
 Estas funciones quedan para ampliaciones posteriores:
 - Más monstruos con reglas propias, por ejemplo uno que solo ataca a quien hace ruido.
-- Más mapas y salas generadas al azar.
+- Más mapas (hecho: hospital generado al azar en cada partida).
 - Objetos extra: bengalas, trampas de luz, llaves.
 - Mando, chat de voz por proximidad, partidas por Steam sin abrir puertos.
 - Progresión entre partidas.

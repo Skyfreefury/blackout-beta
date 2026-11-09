@@ -28,7 +28,7 @@ const HELP := [
 	["t", "LINTERNA\nQ o clic derecho. Gasta pila, más aún si alumbras al Nonato. Con poca pila parpadea."],
 	["i", "res://art/sprites/battery.png", "Pila. E la coge y recarga la mitad de la linterna."],
 	["t", "ROLES\nEn la sala de espera: enfermero/a, corredor/a, técnico/a y vigía. Cada uno tiene una ventaja y una desventaja."],
-	["t", "NIVELES\nCada nivel suma una tarea y 100 € de cuota. Ganar pasa al siguiente."],
+	["t", "NIVELES\nCada partida genera un hospital nuevo. Cada nivel suma una tarea y 100 € de cuota. Desde el nivel 2 el hospital es mayor y desde el 3 hay un Nonato más (otro cada 2 niveles). Ganar pasa al siguiente."],
 	["t", "CONTROLES\nWASD mover, ratón apuntar, ESPACIO correr, Q linterna, E usar, ESC pausa, F11 pantalla completa."],
 ]
 ## Ancho de la columna de dibujos en las instrucciones.
