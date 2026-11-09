@@ -7,7 +7,7 @@ extends CharacterBody2D
 ## Las lámparas fijas son refugio: no entra en su luz y, si se encienden con él dentro, sale.
 ## Existe en todos los equipos con el mismo nombre; la autoridad es el anfitrión.
 ## Mejorado (partidas de 2 o 4 jugadores): un 15% más rápido, se aturde 0,3 s y chilla
-## cuando le iluminan. El chillido apaga 2,5 s las linternas a 150 px. Recarga en 18 s.
+## cuando le iluminan. El chillido apaga 2 s las linternas a 150 px. Recarga en 30 s.
 
 const SPEED := 110.0
 const FLEE_SPEED := 90.0
@@ -25,8 +25,8 @@ const ENHANCED_STUN_TIME := 0.3
 const ENHANCED_TINT := Color(1.0, 0.7, 0.7)
 const ENHANCED_SCALE := 1.15
 const SCREAM_RANGE := 150.0
-const SCREAM_BLIND := 2.5
-const SCREAM_COOLDOWN := 18.0
+const SCREAM_BLIND := 2.0
+const SCREAM_COOLDOWN := 30.0
 ## Un jugador que ya persigue otro Nonato parece un 50% más lejos: se reparten las presas.
 const SHARED_TARGET_FACTOR := 1.5
 ## Segundos sin luz necesarios para que la siguiente linterna vuelva a aturdirlo.

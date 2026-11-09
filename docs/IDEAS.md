@@ -44,7 +44,7 @@ Colocación aleatoria implementada. El hospital marca 3 sitios por generador, 3 
 | 3 | 2 normales |
 | 4 | 2 mejorados |
 
-El mejorado corre un 15% más, se aturde 0,3 s en vez de 0,5 s y chilla al recibir luz: apaga 2,5 s las linternas a 150 px, con recarga de 18 s. Dos Nonatos se reparten las presas: un jugador ya perseguido le parece al otro un 50% más lejos.
+El mejorado corre un 15% más, se aturde 0,3 s en vez de 0,5 s y chilla al recibir luz: apaga 2 s las linternas a 150 px, con recarga de 30 s. Dos Nonatos se reparten las presas: un jugador ya perseguido le parece al otro un 50% más lejos.
 
 ## Roles en cooperativo (implementado)
 Hecho en `scripts/roles.gd`. El botón "Rol" de la sala de espera cambia de rol.
