@@ -64,3 +64,15 @@ Cada jugador elige un rol en la sala de espera. Una ventaja y una desventaja por
 | Vigía | Cono de linterna un 30% más ancho | Su linterna se gasta más rápido al apuntar al monstruo |
 
 Los porcentajes son de partida y se ajustan jugando.
+
+## Segundo escenario desde el nivel 4 (anotado el 2026-11-09)
+Niveles 1 a 3 en el hospital. Desde el nivel 4, otro mapa con su ambientación y monstruos nuevos.
+Ideas de partida, sin decidir:
+
+| Escenario | Plano | Monstruo nuevo |
+|---|---|---|
+| Psiquiátrico | Celdas en pasillos largos, patio y sala de terapia | Acechador: solo se mueve cuando nadie le mira |
+| Orfanato | Dormitorios, capilla, sótano con túneles | Niña de la cuna: imita la voz de un compañero para atraer |
+| Morgue municipal | Cámaras frigoríficas, incinerador, túneles | Cadáver que se levanta al pisar cerca de una camilla |
+
+Cambios necesarios: generador de planos con catálogo de salas por escenario (hoy `scripts/hospital_gen.gd`), hoja de casillas por escenario, sonidos y una escena de monstruo por tipo con su propia IA.
