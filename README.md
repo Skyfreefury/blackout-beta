@@ -4,6 +4,8 @@ Juego cooperativo de terror para 1 a 4 jugadores, con vista desde arriba y arte 
 
 Los jugadores recorren un hospital abandonado a oscuras para completar tareas y escapar. Cada nivel pide una tarea más (nivel 1: 2 tareas) sacada de un catálogo de 10: generadores, archivadores, ordenadores y válvulas. Además hay que entregar objetos de valor en el carro de la entrada hasta cubrir la cuota del nivel (100 € + 100 € por nivel). La mochila lleva 3 objetos y cada uno frena un 8%. Al caer, la mochila queda en el suelo. Tareas, objetos, pilas y el punto de aparición del monstruo cambian de sitio en cada partida. El Nonato los persigue y huye de las linternas. Con más jugadores sube la dificultad: 1 jugador, 1 Nonato normal; 2, uno mejorado; 3, dos normales; 4, dos mejorados. El mejorado es un 15% más rápido, se aturde menos y chilla al iluminarlo, lo que apaga 2,5 s las linternas cercanas.
 
+Estado: beta en desarrollo. El menú tiene un botón "Cómo jugar" con el objetivo y los controles. Si todos los jugadores que quedan están derribados, la partida termina al momento.
+
 ## Documentación
 - [ERS](docs/ERS.md): requisitos de la versión mínima jugable.
 - [Ideas](docs/IDEAS.md): ideas anotadas para próximas versiones.

@@ -6,6 +6,43 @@ extends Control
 const JOIN_TIMEOUT := 5.0
 const TEXT_COLOR := Color("c9d1d3")
 const ACCENT := Color("8f3a3a")
+const HELP_TEXT := """CÓMO JUGAR   (beta en desarrollo: puede haber fallos y cambios)
+
+OBJETIVO
+Escapad del hospital abandonado por la salida de urgencias.
+La salida se abre al cumplir dos cosas:
+1. Hacer todas las tareas del nivel (arriba a la izquierda).
+2. Entregar botín en el carro amarillo hasta cubrir la cuota.
+
+TAREAS
+Mantén E junto a generadores, archivadores, ordenadores y válvulas.
+Los generadores encienden luces de emergencia: el Nonato no entra en ellas.
+
+BOTÍN
+E coge objetos de valor. La mochila lleva 3 y cada uno te frena.
+E junto al carro entrega todo. Si caes, la mochila queda en el suelo.
+
+EL NONATO
+Caza a oscuras. Tu linterna lo aturde y lo hace buscar otro camino.
+Prefiere a quien no le apunta y a quien hace tareas.
+Primer golpe: derribado. Un compañero te reanima manteniendo E.
+Segundo golpe, o 30 s sin ayuda: mueres.
+Más jugadores, más peligro: con 2 y 4 es más fuerte y chilla
+para apagar linternas. Con 3 y 4 hay dos Nonatos.
+
+LINTERNA
+Q o clic derecho. Gasta pila, más aún si alumbras al Nonato.
+Recoge pilas con E. Con poca pila parpadea.
+
+ROLES (sala de espera)
+Enfermero/a, corredor/a, técnico/a y vigía. Cada uno tiene una ventaja y una desventaja.
+
+NIVELES
+Cada nivel suma una tarea y sube la cuota. Ganar pasa al siguiente.
+
+CONTROLES
+WASD mover, ratón apuntar, ESPACIO correr, Q linterna, E usar,
+ESC pausa, F11 pantalla completa."""
 
 var _name_edit := LineEdit.new()
 var _ip_edit := LineEdit.new()
@@ -20,6 +57,7 @@ var _role_info := Label.new()
 var _join_timer := Timer.new()
 var _auto_start_at := 0
 var _options_box := VBoxContainer.new()
+var _help_panel := PanelContainer.new()
 var _volume_slider := HSlider.new()
 var _volume_label := Label.new()
 var _fullscreen_check := CheckBox.new()
@@ -67,6 +105,7 @@ func _build_ui() -> void:
 	join_row.add_child(_ip_edit)
 	join_row.add_child(_button("Unirse", _on_join_pressed))
 	_main_box.add_child(join_row)
+	_main_box.add_child(_button("Cómo jugar", _show_help.bind(true)))
 	_main_box.add_child(_button("Opciones", _show_options.bind(true)))
 	_main_box.add_child(_button("Salir", get_tree().quit))
 
@@ -104,9 +143,42 @@ func _build_ui() -> void:
 	_status.add_theme_color_override("font_color", ACCENT)
 	root.add_child(_status)
 
+	var beta := Label.new()
+	beta.text = "BETA\nEN DESARROLLO"
+	beta.add_theme_color_override("font_color", ACCENT)
+	# Esquina superior izquierda, libre junto al logo.
+	beta.position = Vector2(4, 3)
+	add_child(beta)
+	_build_help()
+
 	_join_timer.one_shot = true
 	_join_timer.timeout.connect(_on_join_failed.bind("Tiempo de espera agotado"))
 	add_child(_join_timer)
+
+
+## Instrucciones a pantalla completa con desplazamiento.
+func _build_help() -> void:
+	_help_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_help_panel.add_theme_stylebox_override("panel", _box(Color("0b0b10"), Color("34384a")))
+	var box := VBoxContainer.new()
+	_help_panel.add_child(box)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
+	var text := Label.new()
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# El archivo puede guardarse con saltos de Windows: se quitan los retornos de carro.
+	text.text = HELP_TEXT.replace(char(13), "")
+	scroll.add_child(text)
+	box.add_child(_button("Volver", _show_help.bind(false)))
+	_help_panel.visible = false
+	add_child(_help_panel)
+
+
+func _show_help(open: bool) -> void:
+	_help_panel.visible = open
 
 
 func _show_options(open: bool) -> void:
@@ -252,6 +324,8 @@ func _apply_debug_args() -> void:
 		print("RESULT vuelta_al_menu motivo=%s" % _status.text)
 		get_tree().quit()
 		return
+	if args.has("help"):
+		_show_help(true)
 	if args.has("menushot"):
 		await get_tree().create_timer(0.3).timeout
 		var img := get_viewport().get_texture().get_image()

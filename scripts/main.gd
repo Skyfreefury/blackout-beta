@@ -308,9 +308,11 @@ func _check_end() -> void:
 	var all_players := get_tree().get_nodes_in_group("players")
 	if all_players.is_empty():
 		return
+	# La partida sigue mientras alguien pueda moverse. Si todos los que quedan están
+	# derribados nadie puede reanimarlos: termina ya, sin esperar a que se desangren.
 	var survivors := PackedStringArray()
 	for p: Player in all_players:
-		if p.is_active():
+		if p.can_act():
 			return
 		if p.escaped:
 			survivors.append(str(Net.players.get(p.name.to_int(), p.name)))
