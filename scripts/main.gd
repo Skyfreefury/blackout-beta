@@ -12,6 +12,8 @@ const QUOTA_BASE := 100
 const QUOTA_PER_LEVEL := 100
 const LOOT_BASE := 8
 const LOOT_PER_LEVEL := 2
+## Tope de Nonatos: 2 por jugadores y hasta 2 más por nivel.
+const MAX_MONSTERS := 4
 ## Distancia al monstruo a la que empieza a oírse el latido.
 const HEARTBEAT_RANGE := 220.0
 
@@ -59,8 +61,14 @@ func _ready() -> void:
 	# --crowd=N simula N jugadores en pruebas.
 	var crowd_arg := _user_arg("crowd")
 	var crowd := int(crowd_arg) if not crowd_arg.is_empty() else maxi(Net.players.size(), 1)
-	level.monster_count = 1 if crowd <= 2 else 2
+	# Y por nivel: uno más desde el nivel 3 y otro cada 2 niveles, hasta MAX_MONSTERS.
+	var level_bonus := 0 if Net.game_level < 3 else 1 + (Net.game_level - 3) / 2
+	level.monster_count = mini((1 if crowd <= 2 else 2) + level_bonus, MAX_MONSTERS)
 	_enhanced_monsters = crowd == 2 or crowd >= 4
+	# Hospital nuevo en cada partida, más grande con el nivel. Las pruebas con --scenario
+	# usan el mapa fijo porque colocan al jugador en casillas concretas; --procgen lo fuerza.
+	if map_arg.is_empty() and (_user_arg("scenario").is_empty() or OS.get_cmdline_user_args().has("--procgen")):
+		level.procedural_level = Net.game_level
 	level.build()
 	_spawn_world()
 	Sfx.make_loop(self, "ambient_loop", -8.0).play()

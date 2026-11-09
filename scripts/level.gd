@@ -27,6 +27,8 @@ const MONSTER_BLOCKING := "#XEciwt123aov"
 @export_file("*.txt") var map_path := "res://maps/hospital.txt"
 ## Semilla del reparto de objetos. El anfitrión la elige y la envía, así todos ven el mismo mapa.
 var map_seed := 0
+## Nivel del hospital aleatorio (fija su tamaño). 0: usa el mapa fijo de map_path.
+var procedural_level := 0
 
 var tiles: TileMapLayer
 var size := Vector2i.ZERO
@@ -74,7 +76,12 @@ var _zone_cells := {}
 
 
 func build() -> void:
-	_rows = _load_rows(map_path)
+	if procedural_level > 0:
+		_rows = HospitalGen.generate(map_seed, procedural_level)
+		if _rows.is_empty():
+			push_warning("Hospital aleatorio no válido con la semilla %d: uso %s" % [map_seed, map_path])
+	if _rows.is_empty():
+		_rows = _load_rows(map_path)
 	size = Vector2i(_rows[0].length(), _rows.size())
 	_pick_spawns()
 	tiles = TileMapLayer.new()
