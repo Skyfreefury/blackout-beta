@@ -6,43 +6,33 @@ extends Control
 const JOIN_TIMEOUT := 5.0
 const TEXT_COLOR := Color("c9d1d3")
 const ACCENT := Color("8f3a3a")
-const HELP_TEXT := """CÓMO JUGAR   (beta en desarrollo: puede haber fallos y cambios)
-
-OBJETIVO
-Escapad del hospital abandonado por la salida de urgencias.
-La salida se abre al cumplir dos cosas:
-1. Hacer todas las tareas del nivel (arriba a la izquierda).
-2. Entregar botín en el carro amarillo hasta cubrir la cuota.
-
-TAREAS
-Mantén E junto a generadores, archivadores, ordenadores y válvulas.
-Los generadores encienden luces de emergencia: el Nonato no entra en ellas.
-
-BOTÍN
-E coge objetos de valor. La mochila lleva 3 y cada uno te frena.
-E junto al carro entrega todo. Si caes, la mochila queda en el suelo.
-
-EL NONATO
-Caza a oscuras. Tu linterna lo aturde y lo hace buscar otro camino.
-Prefiere a quien no le apunta y a quien hace tareas.
-Primer golpe: derribado. Un compañero te reanima manteniendo E.
-Segundo golpe, o 30 s sin ayuda: mueres.
-Más jugadores, más peligro: con 2 y 4 es más fuerte y chilla
-para apagar linternas. Con 3 y 4 hay dos Nonatos.
-
-LINTERNA
-Q o clic derecho. Gasta pila, más aún si alumbras al Nonato.
-Recoge pilas con E. Con poca pila parpadea.
-
-ROLES (sala de espera)
-Enfermero/a, corredor/a, técnico/a y vigía. Cada uno tiene una ventaja y una desventaja.
-
-NIVELES
-Cada nivel suma una tarea y sube la cuota. Ganar pasa al siguiente.
-
-CONTROLES
-WASD mover, ratón apuntar, ESPACIO correr, Q linterna, E usar,
-ESC pausa, F11 pantalla completa."""
+## Instrucciones: texto ["t", texto] o fila con dibujo ["i", sprite, texto, región, tinte].
+## La región recorta un fotograma de una hoja de sprites. Rect2() usa la imagen entera.
+const HELP := [
+	["t", "CÓMO JUGAR\nBeta en desarrollo: puede haber fallos y cambios."],
+	["t", "OBJETIVO\nEscapad del hospital por la salida de urgencias. Se abre al cumplir dos cosas:\n1. Hacer todas las tareas del nivel (lista arriba a la izquierda).\n2. Entregar botín en el carro hasta cubrir la cuota."],
+	["t", "TAREAS\nMantén E junto a ellas. El progreso no se pierde al soltar."],
+	["i", "res://art/sprites/generator.png", "Generador, 10 s. Enciende las luces de emergencia de su zona: el Nonato no entra en ellas."],
+	["i", "res://art/sprites/task_archive.png", "Archivador, 6 s. Recoger los historiales."],
+	["i", "res://art/sprites/task_computer.png", "Ordenador, 8 s. Reiniciarlo."],
+	["i", "res://art/sprites/task_valve.png", "Válvula, 5 s. Cerrar el vapor."],
+	["t", "BOTÍN\nE coge objetos. La mochila lleva 3 y cada uno te frena un 8%. Si caes, la mochila queda en el suelo."],
+	["i", "res://art/sprites/loot_samples.png", "Muestras, de 20 a 40 €."],
+	["i", "res://art/sprites/loot_tools.png", "Instrumental, de 40 a 70 €."],
+	["i", "res://art/sprites/loot_watch.png", "Reloj de oro, de 80 a 120 €."],
+	["i", "res://art/sprites/loot_microscope.png", "Microscopio, de 120 a 180 €."],
+	["i", "res://art/sprites/cart.png", "Carro de entrega, en urgencias junto a la salida. E entrega toda la mochila."],
+	["t", "EL NONATO\nCaza a oscuras. Tu linterna lo aturde y le hace buscar otro camino. Prefiere a quien no le apunta y a quien hace tareas.\nPrimer golpe: derribado. Un compañero te reanima manteniendo E. Segundo golpe, o 30 s sin ayuda: mueres."],
+	["i", "res://art/sprites/monster.png", "Nonato normal.", Rect2(0, 0, 40, 40)],
+	["i", "res://art/sprites/monster.png", "Nonato mejorado, más rojo y grande. Corre más y chilla para apagar linternas. Sale con 2 y 4 jugadores; con 3 y 4 hay dos Nonatos.", Rect2(0, 0, 40, 40), Color(1.0, 0.7, 0.7)],
+	["t", "LINTERNA\nQ o clic derecho. Gasta pila, más aún si alumbras al Nonato. Con poca pila parpadea."],
+	["i", "res://art/sprites/battery.png", "Pila. E la coge y recarga la mitad de la linterna."],
+	["t", "ROLES\nEn la sala de espera: enfermero/a, corredor/a, técnico/a y vigía. Cada uno tiene una ventaja y una desventaja."],
+	["t", "NIVELES\nCada nivel suma una tarea y 100 € de cuota. Ganar pasa al siguiente."],
+	["t", "CONTROLES\nWASD mover, ratón apuntar, ESPACIO correr, Q linterna, E usar, ESC pausa, F11 pantalla completa."],
+]
+## Ancho de la columna de dibujos en las instrucciones.
+const HELP_ICON_WIDTH := 44
 
 var _name_edit := LineEdit.new()
 var _ip_edit := LineEdit.new()
@@ -166,15 +156,58 @@ func _build_help() -> void:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	box.add_child(scroll)
-	var text := Label.new()
-	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# El archivo puede guardarse con saltos de Windows: se quitan los retornos de carro.
-	text.text = HELP_TEXT.replace(char(13), "")
-	scroll.add_child(text)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 6)
+	scroll.add_child(list)
+	for entry: Array in HELP:
+		if entry[0] == "t":
+			# Primera línea de cada bloque: título en rojo.
+			var lines: PackedStringArray = entry[1].split("
+", true, 1)
+			var title := _help_label(lines[0])
+			title.add_theme_color_override("font_color", ACCENT)
+			list.add_child(title)
+			if lines.size() > 1:
+				list.add_child(_help_label(lines[1]))
+		else:
+			list.add_child(_help_row(entry))
 	box.add_child(_button("Volver", _show_help.bind(false)))
 	_help_panel.visible = false
 	add_child(_help_panel)
+
+
+func _help_label(text: String) -> Label:
+	var label := Label.new()
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.text = text
+	return label
+
+
+## Fila con el dibujo del juego a la izquierda y su explicación a la derecha.
+func _help_row(entry: Array) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	var tex: Texture2D = load(entry[1])
+	if entry.size() > 3:
+		var atlas := AtlasTexture.new()
+		atlas.atlas = tex
+		atlas.region = entry[3]
+		tex = atlas
+	var icon := TextureRect.new()
+	icon.texture = tex
+	# Los objetos pequeños (pilas, botín, carro) se dibujan al doble para distinguirlos.
+	var zoom := 2.0 if tex.get_height() <= 16 else 1.0
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(HELP_ICON_WIDTH, tex.get_height() * zoom)
+	if entry.size() > 4:
+		icon.modulate = entry[4]
+	row.add_child(icon)
+	var label := _help_label(entry[2])
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(label)
+	return row
 
 
 func _show_help(open: bool) -> void:
@@ -326,6 +359,9 @@ func _apply_debug_args() -> void:
 		return
 	if args.has("help"):
 		_show_help(true)
+		if args.has("helpscroll"):
+			await get_tree().process_frame
+			_help_panel.find_children("*", "ScrollContainer", true, false)[0].scroll_vertical = int(args["helpscroll"])
 	if args.has("menushot"):
 		await get_tree().create_timer(0.3).timeout
 		var img := get_viewport().get_texture().get_image()
