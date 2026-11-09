@@ -58,7 +58,7 @@ Grupos de 2 a 4 amigos que juegan desde su casa, hablando por Discord. También 
 | RF-04 | La sala de espera lista a los jugadores conectados (máximo 4). Solo el anfitrión puede empezar. | Alta |
 | RF-05 | Si el anfitrión se desconecta, los clientes vuelven al menú con un aviso. | Alta |
 | RF-06 | Opciones permite cambiar volumen general, pantalla completa y nombre del jugador. | Media |
-| RF-07 | La tecla Escape abre una pausa local con Volver y Abandonar. La partida no se detiene. | Media |
+| RF-07 | La tecla Escape abre una pausa local con Volver y un botón rojo "Salir de la partida". La partida no se detiene. | Media |
 
 ### 3.2 Jugador
 | ID | Requisito | Prioridad |

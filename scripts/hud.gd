@@ -152,12 +152,23 @@ func _build_pause() -> void:
 	box.add_child(note)
 	_role_label.add_theme_color_override("font_color", BATTERY_COLOR)
 	box.add_child(_role_label)
+	# Los controles completos están en "Cómo jugar": aquí no caben en 180 px de alto.
 	var help := Label.new()
-	help.text = Controls.HELP
+	help.text = "Q linterna   E usar   ESPACIO correr"
 	help.add_theme_color_override("font_color", Color("8a93a0"))
 	box.add_child(help)
-	box.add_child(_button("Volver", toggle_pause))
-	box.add_child(_button("Abandonar", leave_requested.emit))
+	var buttons := HBoxContainer.new()
+	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+	buttons.add_theme_constant_override("separation", 8)
+	box.add_child(buttons)
+	buttons.add_child(_button("Volver", toggle_pause))
+	var leave := _button("Salir de la partida", leave_requested.emit)
+	leave.add_theme_color_override("font_color", Color.WHITE)
+	leave.add_theme_color_override("font_hover_color", Color.WHITE)
+	leave.add_theme_stylebox_override("normal", _box(Color("8f2a2a"), Color("c04040")))
+	leave.add_theme_stylebox_override("hover", _box(Color("b33636"), Color("e05050")))
+	leave.add_theme_stylebox_override("pressed", _box(Color("5a1a1a"), Color("c04040")))
+	buttons.add_child(leave)
 	_pause.add_child(box)
 	_pause.visible = false
 	_place_center(_pause)
