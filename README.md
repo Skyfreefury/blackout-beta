@@ -2,7 +2,7 @@
 
 Juego cooperativo de terror para 1 a 4 jugadores, con vista desde arriba y arte pixel, hecho en Godot 4.7.2.
 
-Los jugadores recorren un hospital abandonado a oscuras para completar tareas y escapar. Cada nivel pide una tarea más (nivel 1: 2 tareas) sacada de un catálogo de 10: generadores, archivadores, ordenadores y válvulas. Además hay que entregar objetos de valor en el carro de la entrada hasta cubrir la cuota del nivel (100 € + 100 € por nivel). La mochila lleva 3 objetos y cada uno frena un 8%. Al caer, la mochila queda en el suelo. Tareas, objetos, pilas y el punto de aparición del monstruo cambian de sitio en cada partida. El Nonato los persigue y solo se mueve cuando ninguna luz lo ilumina.
+Los jugadores recorren un hospital abandonado a oscuras para completar tareas y escapar. Cada nivel pide una tarea más (nivel 1: 2 tareas) sacada de un catálogo de 10: generadores, archivadores, ordenadores y válvulas. Además hay que entregar objetos de valor en el carro de la entrada hasta cubrir la cuota del nivel (100 € + 100 € por nivel). La mochila lleva 3 objetos y cada uno frena un 8%. Al caer, la mochila queda en el suelo. Tareas, objetos, pilas y el punto de aparición del monstruo cambian de sitio en cada partida. El Nonato los persigue y huye de las linternas. Con más jugadores sube la dificultad: 1 jugador, 1 Nonato normal; 2, uno mejorado; 3, dos normales; 4, dos mejorados. El mejorado es un 15% más rápido, se aturde menos y chilla al iluminarlo, lo que apaga 2,5 s las linternas cercanas.
 
 ## Documentación
 - [ERS](docs/ERS.md): requisitos de la versión mínima jugable.
@@ -21,7 +21,7 @@ Controles: WASD mover, ratón apuntar, Q o clic derecho linterna (F también val
 ```bash
 godot --headless --path . res://scenes/main.tscn -- --scenario=repair --nomonster --frames=700
 ```
-Escenarios del hospital: `repair`, `door`, `revive`, `bleed` (con `--nomonster`) `lure`, `loot` y `drop`. `--seed=N` fija el reparto del mapa. `--level=N` deja N + 1 tareas; sin él quedan las 10. `--role=N` elige el rol (0 enfermero/a, 1 corredor/a, 2 técnico/a, 3 vigía). Escenarios de luz con `--map=res://maps/test.txt`: `lit`, `dark`, `chase`, `lamp`. Todas las opciones en `scripts/debug_run.gd`.
+Escenarios del hospital: `repair`, `door`, `revive`, `bleed` (con `--nomonster`) `lure`, `loot`, `drop` y `scream`. `--crowd=N` pone los Nonatos de una partida de N jugadores. `--seed=N` fija el reparto del mapa. `--level=N` deja N + 1 tareas; sin él quedan las 10. `--role=N` elige el rol (0 enfermero/a, 1 corredor/a, 2 técnico/a, 3 vigía). Escenarios de luz con `--map=res://maps/test.txt`: `lit`, `dark`, `chase`, `lamp`. Todas las opciones en `scripts/debug_run.gd`.
 
 ## Ramas
 - `main`: versiones estables y probadas.

@@ -6,7 +6,8 @@ extends Node
 ##   --scenario=repair|door|revive|bleed    bucle de partida en el hospital
 ##   --scenario=trap|safe|allon|guard       luces de emergencia y vigilancia con linterna
 ##   --scenario=loot|drop                   botín: entregar en el carro o soltarlo al caer
-##   --nomonster                            congela al monstruo
+##   --nomonster                            congela a los Nonatos
+##   --crowd=N                              Nonatos como con N jugadores (scream: chillido)
 ##   --seed=N                               reparto de generadores, monstruo y pilas
 ##   --role=N                               rol del jugador local (índice de Roles.LIST)
 ## En red (lanzando el menú con --host=N o --join=IP):
@@ -45,7 +46,8 @@ func _ready() -> void:
 		return
 	Net.allow_teleport = _args.has("allow-teleport")
 	if _args.has("nomonster"):
-		main.monster.process_mode = Node.PROCESS_MODE_DISABLED
+		for m: Monster in main.monsters:
+			m.process_mode = Node.PROCESS_MODE_DISABLED
 	await _setup(main)
 	_monster_start = main.monster.global_position
 	_player_start = main.player.global_position
@@ -169,6 +171,14 @@ func _setup(main: Node) -> void:
 				player.start_interact()
 			else:
 				player.hit()
+		"scream":
+			# Nonato mejorado iluminado de cerca: debe chillar y apagar la linterna.
+			monster.enhanced = true
+			monster._scream_timer = 0.0
+			player.global_position = level.cell_center(Vector2i(20, 16))
+			monster.global_position = level.cell_center(Vector2i(25, 16))
+			_main = main
+			_track_monster = true
 		"bleed":
 			player.hit()
 		"trap":
@@ -222,6 +232,7 @@ func _report(main: Node) -> void:
 	]
 	line += " role=%d gen0=%.2f battery_max=%.0f run=%.0f angle=%.0f" % [p.role, main.tasks[0].progress if not main.tasks.is_empty() else 0.0, p.battery_max, p.run_speed, p.light_angle]
 	line += " money=%d quota=%d carried=%d loot=%d" % [main.money, main.quota, p.carried_values.size(), get_tree().get_nodes_in_group("loot").size()]
+	line += " monsters=%d enhanced=%s blind=%.1f light=%s" % [main.monsters.size(), monster.enhanced, p.blind_time, p.light_on]
 	line += " level=%d tasks=%s" % [Net.game_level, ",".join((main.tasks as Array).map(func(t): return t.kind))]
 	line += " seed=%d gens_at=%s" % [main.level.map_seed, ",".join((main.tasks as Array).map(func(g): return str(main.level.world_to_cell(g.global_position))))]
 	line += " monster_dist=%.0f watchers=%d vel=(%.0f,%.0f) target=%s" % [monster.global_position.distance_to(p.global_position), monster._watchers.size(), monster.velocity.x, monster.velocity.y, monster._target]

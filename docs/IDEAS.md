@@ -36,6 +36,16 @@ Colocación aleatoria implementada. El hospital marca 3 sitios por generador, 3 
 - Lo que no se saca se pierde al morir. Lo extraído se gasta entre partidas en mejoras: linternas, más batería, botiquines.
 - Riesgo: necesita progreso guardado entre partidas y equilibrar la economía. Es el cambio más grande de esta lista.
 
+## Dificultad por número de jugadores (implementado)
+| Jugadores | Nonatos |
+|---|---|
+| 1 | 1 normal |
+| 2 | 1 mejorado |
+| 3 | 2 normales |
+| 4 | 2 mejorados |
+
+El mejorado corre un 15% más, se aturde 0,3 s en vez de 0,5 s y chilla al recibir luz: apaga 2,5 s las linternas a 150 px, con recarga de 18 s. Dos Nonatos se reparten las presas: un jugador ya perseguido le parece al otro un 50% más lejos.
+
 ## Roles en cooperativo (implementado)
 Hecho en `scripts/roles.gd`. El botón "Rol" de la sala de espera cambia de rol.
 Valores actuales: enfermero/a reanima x1,5 con 72 de batería; corredor/a corre a 120 y aguanta 5 s, y el Nonato le ve a un 60% de su distancia; técnico/a repara x1,4 y se mueve a 54 y 90; vigía tiene un cono de 65° y gasta x3 al alumbrar al Nonato.

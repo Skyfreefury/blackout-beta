@@ -149,6 +149,11 @@ def main() -> None:
     wail = [max(-0.5, min(0.5, s * 2.5)) for s in wail]  # distorsión
     save("monster_freeze", envelope(lowpass(wail, 1800), 0.05, 0.5), 0.7)
 
+    # Chillido del Nonato mejorado: grito agudo que sube, con ruido áspero. Apaga linternas.
+    shriek = tone(lambda t: 1200 + 900 * t + 120 * math.sin(2 * math.pi * 11 * t), 1.0, "saw", 0.6)
+    shriek = [max(-0.45, min(0.45, x * 3.0)) for x in shriek]
+    save("monster_scream", envelope(lowpass(mix(shriek, noise(1.0, 0.35)), 3200), 0.02, 0.6), 0.8)
+
     # Latido: dos golpes por segundo y medio, en bucle.
     beat = mix(at(thump(55, 0.18), 0.0, 1.0), at(gain(thump(48, 0.2), 0.7), 0.22, 1.0))
     save("heartbeat_loop", beat, 0.9)

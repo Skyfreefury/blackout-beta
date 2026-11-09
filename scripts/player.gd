@@ -97,6 +97,8 @@ var move_override: Variant = null
 var hold_target: Node = null
 
 var _exhausted := false
+## Segundos que la linterna sigue apagada por el chillido de un Nonato (solo el dueño).
+var blind_time := 0.0
 ## Solo en el anfitrión: objetivo que este jugador dice estar trabajando.
 var _server_target: Node = null
 var _last_worked_frame := -10
@@ -169,6 +171,7 @@ func is_repairing() -> bool:
 
 func _physics_process(delta: float) -> void:
 	if is_local():
+		blind_time = maxf(blind_time - delta, 0.0)
 		if can_act():
 			_move(delta)
 			_aim()
@@ -215,7 +218,7 @@ func _correct_position(pos: Vector2) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_local() or not can_act():
 		return
-	if event.is_action_pressed("toggle_light") and battery > 0.0:
+	if event.is_action_pressed("toggle_light") and battery > 0.0 and blind_time == 0.0:
 		light_on = not light_on
 	elif event.is_action_pressed("interact"):
 		start_interact()
@@ -404,8 +407,11 @@ func _aim() -> void:
 
 func _drain_battery(delta: float) -> void:
 	if light_on:
-		var monster := get_tree().get_first_node_in_group("monster") as Monster
-		var rate := monster_drain if monster != null and monster.is_lit_by(self) else 1.0
+		var rate := 1.0
+		for monster: Monster in get_tree().get_nodes_in_group("monster"):
+			if monster.is_lit_by(self):
+				rate = monster_drain
+				break
 		battery = maxf(battery - delta * rate, 0.0)
 		if battery == 0.0:
 			light_on = false
@@ -503,6 +509,14 @@ func _request_deposit() -> void:
 	deposited.emit(carried_total())
 	carried_kinds = PackedInt32Array()
 	carried_values = PackedInt32Array()
+
+
+## Lo envía el anfitrión al dueño: el chillido apaga la linterna y no se puede encender.
+@rpc("any_peer", "call_local", "reliable")
+func blind(seconds: float) -> void:
+	if _sender() == 1:
+		light_on = false
+		blind_time = seconds
 
 
 @rpc("any_peer", "call_local", "reliable")

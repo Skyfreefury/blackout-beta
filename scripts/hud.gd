@@ -113,6 +113,8 @@ func _status_text() -> String:
 		return "HAS MUERTO"
 	if player.escaped:
 		return "HAS ESCAPADO"
+	if player.blind_time > 0.0:
+		return "EL NONATO CHILLA\nTu linterna no responde"
 	if player.is_down:
 		return "DERRIBADO %d s\nUn compañero puede reanimarte con E" % ceili(player.down_time)
 	return ""

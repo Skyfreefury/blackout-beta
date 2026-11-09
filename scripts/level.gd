@@ -32,6 +32,10 @@ var tiles: TileMapLayer
 var size := Vector2i.ZERO
 var player_spawn := Vector2.ZERO
 var monster_spawn := Vector2.ZERO
+## Puntos de aparición elegidos, uno por Nonato. El mapa marca 3 candidatos con M.
+var monster_spawns: Array[Vector2] = []
+## Nonatos de la partida: se quedan tantos sitios M como este número.
+var monster_count := 1
 var battery_spawns: Array[Vector2] = []
 ## Lámparas como pares [posición, zona]. Zona 0: siempre encendida.
 var lamp_spawns: Array = []
@@ -102,6 +106,8 @@ func _pick_spawns() -> void:
 	for c: String in found:
 		var cells: Array = found[c]
 		var keep := 1 if c in SINGLE_PICKS else BATTERY_COUNT
+		if c == "M":
+			keep = monster_count
 		if c == "$":
 			keep = loot_count if loot_count >= 0 else cells.size()
 		_shuffle(cells, rng)
@@ -213,7 +219,9 @@ func _place(cell: Vector2i) -> void:
 	tiles.set_cell(cell, 0, _floor_for(cell))
 	match c:
 		"P": player_spawn = center
-		"M": monster_spawn = center
+		"M":
+			monster_spawns.append(center)
+			monster_spawn = monster_spawns[0]
 		"B": battery_spawns.append(center)
 		"$": loot_spawns.append(center)
 		"D": cart_position = center

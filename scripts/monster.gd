@@ -6,6 +6,8 @@ extends CharacterBody2D
 ## así que un jugador vigilando no protege al resto.
 ## Las lámparas fijas son refugio: no entra en su luz y, si se encienden con él dentro, sale.
 ## Existe en todos los equipos con el mismo nombre; la autoridad es el anfitrión.
+## Mejorado (partidas de 2 o 4 jugadores): un 15% más rápido, se aturde 0,3 s y chilla
+## cuando le iluminan. El chillido apaga 2,5 s las linternas a 150 px. Recarga en 18 s.
 
 const SPEED := 110.0
 const FLEE_SPEED := 90.0
@@ -18,6 +20,15 @@ const ROAM_TIME := 5.0
 const WAYPOINT_REACHED := 4.0
 const FREEZE_SOUND_COOLDOWN := 2.0
 const STUN_TIME := 0.5
+const ENHANCED_SPEED := 1.15
+const ENHANCED_STUN_TIME := 0.3
+const ENHANCED_TINT := Color(1.0, 0.7, 0.7)
+const ENHANCED_SCALE := 1.15
+const SCREAM_RANGE := 150.0
+const SCREAM_BLIND := 2.5
+const SCREAM_COOLDOWN := 18.0
+## Un jugador que ya persigue otro Nonato parece un 50% más lejos: se reparten las presas.
+const SHARED_TARGET_FACTOR := 1.5
 ## Segundos sin luz necesarios para que la siguiente linterna vuelva a aturdirlo.
 const STUN_COOLDOWN := 1.5
 const RECOIL_SPEED := 100.0
@@ -31,6 +42,8 @@ const PROBES: Array[Vector2] = [
 var level: Level
 ## Aturdido por una linterna. Se sincroniza: los demás lo ven temblar.
 var frozen := false
+## Versión mejorada. Se decide al crearlo, igual en todos los equipos.
+var enhanced := false
 
 var _path := PackedVector2Array()
 var _path_index := 0
@@ -49,12 +62,16 @@ var _unlit_time := 99.0
 var _watchers: Array[Player] = []
 ## Jugadores que le iluminaron hace poco -> segundos que le quedan en la memoria.
 var _recent_watchers := {}
+var _scream_timer := SCREAM_COOLDOWN / 2.0
 
 @onready var sprite: Sprite2D = $Sprite
 
 
 func _ready() -> void:
 	add_to_group("monster")
+	if enhanced:
+		sprite.modulate = ENHANCED_TINT
+		sprite.scale = Vector2.ONE * ENHANCED_SCALE
 	_crawl_sound = Sfx.make_loop_2d(self, "monster_loop", -2.0, 300.0)
 
 
@@ -102,7 +119,7 @@ func _update_light_reaction(delta: float) -> void:
 		_unlit_time += delta
 	else:
 		if _unlit_time >= STUN_COOLDOWN:
-			_stun_timer = STUN_TIME
+			_stun_timer = ENHANCED_STUN_TIME if enhanced else STUN_TIME
 		_unlit_time = 0.0
 		for player in _watchers:
 			level.mark_lit_path(player.global_position, global_position, LIT_MEMORY)
@@ -113,7 +130,24 @@ func _update_light_reaction(delta: float) -> void:
 			_recent_watchers.erase(player)
 	_stun_timer = maxf(_stun_timer - delta, 0.0)
 	frozen = _stun_timer > 0.0
-	level.tick_lit(delta)
+	if enhanced:
+		_scream_timer = maxf(_scream_timer - delta, 0.0)
+		if _scream_timer == 0.0 and not _watchers.is_empty():
+			_scream()
+
+
+## Solo en el anfitrión: apaga las linternas cercanas durante unos segundos.
+func _scream() -> void:
+	_scream_timer = SCREAM_COOLDOWN
+	_scream_fx.rpc()
+	for player: Player in get_tree().get_nodes_in_group("players"):
+		if player.can_act() and global_position.distance_to(player.global_position) <= SCREAM_RANGE:
+			player.blind.rpc_id(player.get_multiplayer_authority(), SCREAM_BLIND)
+
+
+@rpc("authority", "call_local", "reliable")
+func _scream_fx() -> void:
+	Sfx.play_at("monster_scream", global_position, 2.0)
 
 
 ## Se aleja de quien le ilumina y pide ruta nueva en cuanto sale del haz.
@@ -142,7 +176,7 @@ func _hunt(delta: float) -> void:
 	if _repath_timer <= 0.0:
 		_repath_timer = REPATH_TIME
 		_set_path(level.get_monster_path(global_position, _target.global_position))
-	_follow_path(_target.global_position, SPEED)
+	_follow_path(_target.global_position, SPEED * (ENHANCED_SPEED if enhanced else 1.0))
 
 
 ## Nadie al alcance: deambula hacia casillas al azar.
@@ -215,11 +249,20 @@ func _pick_target(skip_watchers: bool) -> Player:
 		if best_repairing and not repairing:
 			continue
 		var dist := player.lure_distance(global_position)
+		if _chased_by_other(player):
+			dist *= SHARED_TARGET_FACTOR
 		if dist < best_dist or (repairing and not best_repairing):
 			best_repairing = repairing
 			best_dist = dist
 			best = player
 	return best
+
+
+func _chased_by_other(player: Player) -> bool:
+	for other: Monster in get_tree().get_nodes_in_group("monster"):
+		if other != self and other._target == player:
+			return true
+	return false
 
 
 ## Arrastre a 6 fotogramas por segundo mientras se mueve; quieto al congelarse.

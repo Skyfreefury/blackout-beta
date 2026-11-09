@@ -17,7 +17,9 @@ const HEARTBEAT_RANGE := 220.0
 
 ## Jugador controlado en este equipo.
 var player: Player
+## Primer Nonato. Con 3 o más jugadores hay un segundo en monsters.
 var monster: Monster
+var monsters: Array[Monster] = []
 ## Tareas de esta partida. Las primeras son los generadores, ordenados por zona.
 var tasks: Array[Task] = []
 var elapsed := 0.0
@@ -29,6 +31,7 @@ var _started := false
 var _ended := false
 var _victory := false
 var _drops := 0
+var _enhanced_monsters := false
 var _heartbeat: AudioStreamPlayer
 
 @onready var level: Level = $Level
@@ -52,6 +55,12 @@ func _ready() -> void:
 		level.task_count = Net.game_level + 1
 		level.loot_count = LOOT_BASE + LOOT_PER_LEVEL * Net.game_level
 	quota = QUOTA_BASE + QUOTA_PER_LEVEL * Net.game_level
+	# Dificultad por jugadores: 1 normal, 2 mejorado, 3 dos normales, 4 dos mejorados.
+	# --crowd=N simula N jugadores en pruebas.
+	var crowd_arg := _user_arg("crowd")
+	var crowd := int(crowd_arg) if not crowd_arg.is_empty() else maxi(Net.players.size(), 1)
+	level.monster_count = 1 if crowd <= 2 else 2
+	_enhanced_monsters = crowd == 2 or crowd >= 4
 	level.build()
 	_spawn_world()
 	Sfx.make_loop(self, "ambient_loop", -8.0).play()
@@ -114,11 +123,15 @@ func _spawn_world() -> void:
 		pickup.name = "Battery%d" % i
 		pickup.position = level.battery_spawns[i]
 		entities.add_child(pickup)
-	monster = MONSTER_SCENE.instantiate()
-	monster.name = "Monster"
-	monster.level = level
-	monster.position = level.monster_spawn
-	entities.add_child(monster)
+	for i in level.monster_spawns.size():
+		var m: Monster = MONSTER_SCENE.instantiate()
+		m.name = "Monster" if i == 0 else "Monster%d" % (i + 1)
+		m.level = level
+		m.enhanced = _enhanced_monsters
+		m.position = level.monster_spawns[i]
+		entities.add_child(m)
+		monsters.append(m)
+	monster = monsters[0]
 
 
 func _add_loot(node_name: String, pos: Vector2, kind: int, value: int) -> void:
@@ -131,6 +144,9 @@ func _add_loot(node_name: String, pos: Vector2, kind: int, value: int) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# Memoria de casillas iluminadas, compartida por todos los Nonatos.
+	if multiplayer.is_server():
+		level.tick_lit(delta)
 	if not _started or _ended:
 		return
 	elapsed += delta
@@ -153,7 +169,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _on_all_loaded() -> void:
-	var synced: Array[Node] = [monster]
+	var synced: Array[Node] = []
+	synced.append_array(monsters)
 	synced.append_array(tasks)
 	for node in synced:
 		node.get_node("Sync").public_visibility = true
@@ -245,7 +262,10 @@ func _follow_spectated() -> void:
 ## Latido más fuerte y rápido cuanto más cerca está el monstruo de la cámara activa.
 func _update_heartbeat() -> void:
 	var camera := get_viewport().get_camera_2d()
-	var dist := INF if camera == null else camera.global_position.distance_to(monster.global_position)
+	var dist := INF
+	if camera != null:
+		for m in monsters:
+			dist = minf(dist, camera.global_position.distance_to(m.global_position))
 	if dist >= HEARTBEAT_RANGE:
 		if _heartbeat.playing:
 			_heartbeat.stop()
