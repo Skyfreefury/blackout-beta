@@ -46,6 +46,8 @@ var frozen := false
 var asleep_until := 0
 ## Versión mejorada. Se decide al crearlo, igual en todos los equipos.
 var enhanced := false
+## Multiplica la velocidad de caza. Lo fija el nivel (ver main.gd MONSTER_SPEED_BY_LEVEL).
+var speed_factor := 1.0
 
 var _path := PackedVector2Array()
 var _path_index := 0
@@ -199,7 +201,7 @@ func _hunt(delta: float) -> void:
 	if _repath_timer <= 0.0:
 		_repath_timer = REPATH_TIME
 		_set_path(level.get_monster_path(global_position, _target.global_position))
-	_follow_path(_target.global_position, SPEED * (ENHANCED_SPEED if enhanced else 1.0))
+	_follow_path(_target.global_position, SPEED * speed_factor * (ENHANCED_SPEED if enhanced else 1.0))
 
 
 ## Nadie al alcance: deambula hacia casillas al azar.

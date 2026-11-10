@@ -8,12 +8,14 @@ const MONSTER_SCENE := preload("res://scenes/monster.tscn")
 const TASK_SCENE := preload("res://scenes/task.tscn")
 const SPAWN_OFFSETS: Array[Vector2] = [Vector2(0, 0), Vector2(14, 0), Vector2(0, 14), Vector2(14, 14)]
 ## Cuota de botín: 100 € más 100 € por nivel. Objetos de valor: 8 más 2 por nivel.
-const QUOTA_BASE := 100
+const QUOTA_BASE := 0
 const QUOTA_PER_LEVEL := 100
 const LOOT_BASE := 8
 const LOOT_PER_LEVEL := 2
 ## Tope de Nonatos: 2 por jugadores y hasta 2 más por nivel.
 const MAX_MONSTERS := 4
+## Velocidad de caza del Nonato por nivel: en el nivel 1 se le puede dejar atrás corriendo.
+const MONSTER_SPEED_BY_LEVEL := [0.85, 0.95]
 ## Distancia al monstruo a la que empieza a oírse el latido.
 const HEARTBEAT_RANGE := 220.0
 
@@ -57,10 +59,13 @@ func _ready() -> void:
 		level.task_count = Net.game_level + 1
 		level.loot_count = LOOT_BASE + LOOT_PER_LEVEL * Net.game_level
 	quota = QUOTA_BASE + QUOTA_PER_LEVEL * Net.game_level
-	# Dificultad por jugadores: 1 normal, 2 mejorado, 3 dos normales, 4 dos mejorados.
+	# Dificultad por jugadores desde el nivel 2: 1 normal, 2 mejorado, 3 dos normales,
+	# 4 dos mejorados. El nivel 1 siempre tiene un Nonato normal y más lento.
 	# --crowd=N simula N jugadores en pruebas.
 	var crowd_arg := _user_arg("crowd")
 	var crowd := int(crowd_arg) if not crowd_arg.is_empty() else maxi(Net.players.size(), 1)
+	if Net.game_level < 2:
+		crowd = 1
 	# Y por nivel: uno más desde el nivel 3 y otro cada 2 niveles, hasta MAX_MONSTERS.
 	var level_bonus := 0 if Net.game_level < 3 else 1 + (Net.game_level - 3) / 2
 	level.monster_count = mini((1 if crowd <= 2 else 2) + level_bonus, MAX_MONSTERS)
@@ -136,6 +141,7 @@ func _spawn_world() -> void:
 		m.name = "Monster" if i == 0 else "Monster%d" % (i + 1)
 		m.level = level
 		m.enhanced = _enhanced_monsters
+		m.speed_factor = MONSTER_SPEED_BY_LEVEL[Net.game_level - 1] if Net.game_level <= MONSTER_SPEED_BY_LEVEL.size() else 1.0
 		m.position = level.monster_spawns[i]
 		entities.add_child(m)
 		monsters.append(m)

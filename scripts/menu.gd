@@ -24,11 +24,11 @@ const HELP := [
 	["i", "res://art/sprites/cart.png", "Carro de entrega, en urgencias junto a la salida. E entrega toda la mochila."],
 	["t", "EL NONATO\nCaza a oscuras. Tu linterna lo aturde y le hace buscar otro camino. Prefiere a quien no le apunta y a quien hace tareas.\nPrimer golpe: derribado. Un compañero te reanima manteniendo E. Segundo golpe, o 30 s sin ayuda: mueres."],
 	["i", "res://art/sprites/monster.png", "Nonato normal.", Rect2(0, 0, 40, 40)],
-	["i", "res://art/sprites/monster.png", "Nonato mejorado, más rojo y grande. Corre más y chilla para apagar linternas. Sale con 2 y 4 jugadores; con 3 y 4 hay dos Nonatos.", Rect2(0, 0, 40, 40), Color(1.0, 0.7, 0.7)],
+	["i", "res://art/sprites/monster.png", "Nonato mejorado, más rojo y grande. Corre más y chilla para apagar linternas. Desde el nivel 2 sale con 2 y 4 jugadores, y con 3 y 4 hay dos Nonatos.", Rect2(0, 0, 40, 40), Color(1.0, 0.7, 0.7)],
 	["t", "LINTERNA\nQ o clic derecho. Gasta pila, más aún si alumbras al Nonato. Con poca pila parpadea."],
 	["i", "res://art/sprites/battery.png", "Pila. E la coge y recarga la mitad de la linterna."],
 	["t", "ROLES\nEn la sala de espera: enfermero/a, corredor/a, técnico/a y vigía. Cada uno tiene una ventaja y una desventaja."],
-	["t", "NIVELES\nCada partida genera un hospital nuevo. Cada nivel suma una tarea y 100 € de cuota. Desde el nivel 2 el hospital es mayor y desde el 3 hay un Nonato más (otro cada 2 niveles). Ganar pasa al siguiente."],
+	["t", "NIVELES\nCada partida genera un hospital nuevo. El nivel 1 tiene un solo Nonato, más lento que tú corriendo, y cuota de 100 €. Cada nivel suma una tarea y 100 € de cuota. Desde el nivel 2 el hospital es mayor y desde el 3 hay un Nonato más (otro cada 2 niveles). Ganar pasa al siguiente."],
 	["t", "TIENDA\nAl acabar un nivel, el botín entregado va al banco común. Cada jugador compra sus mejoras con ese banco. Duran mientras ganéis niveles y se pierden al empezar desde el nivel 1.\nPila +25%: más batería. Zapatillas: +10% de velocidad y +20% de aguante. Mochila +1: un hueco más. Botiquín: al caer te levantas solo en 6 s, un uso. Dardo: F o clic izquierdo, duerme al Nonato 5 s; cada compra es un dardo."],
 	["t", "CONTROLES\nWASD mover, ratón apuntar, ESPACIO correr, Q linterna, E usar, F o clic izquierdo dardo, ESC pausa, F11 pantalla completa."],
 ]
