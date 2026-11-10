@@ -66,7 +66,7 @@ Grupos de 2 a 4 amigos que juegan desde su casa, hablando por Discord. También 
 | RF-10 | El jugador se mueve con WASD a 60 px/s. | Alta |
 | RF-11 | Con Mayús corre a 100 px/s gastando resistencia (4 s llena, recarga en 6 s). | Media |
 | RF-12 | La linterna apunta hacia el ratón con un cono de 50° y 120 px de alcance. | Alta |
-| RF-13 | Q o el clic derecho encienden y apagan la linterna. F dispara el dardo tranquilizante si se ha comprado. | Alta |
+| RF-13 | Q o el clic derecho encienden y apagan la linterna. F o el clic izquierdo disparan el dardo tranquilizante si se ha comprado. | Alta |
 | RF-14 | La batería dura 90 s encendida. Por debajo del 20% la luz parpadea. | Alta |
 | RF-15 | Las pilas del mapa recargan un 50% de batería al recogerlas con E. | Alta |
 | RF-16 | Cada jugador tiene su propia cámara centrada en él. | Alta |

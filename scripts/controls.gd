@@ -1,6 +1,6 @@
 extends Node
 ## Registra los controles al arrancar. Todo queda al alcance de la mano izquierda sobre WASD:
-## Q linterna, E interactuar, Espacio correr. F dardo. Mayús también corre.
+## Q linterna, E interactuar, Espacio correr. F o clic izquierdo dardo. Mayús también corre.
 ## Usa teclas físicas para que WASD funcione igual en teclado español o inglés.
 
 const ACTIONS := {
@@ -18,10 +18,11 @@ const ACTIONS := {
 ## Botones del ratón por acción.
 const MOUSE := {
 	"toggle_light": [MOUSE_BUTTON_RIGHT],
+	"fire_dart": [MOUSE_BUTTON_LEFT],
 }
 ## Texto de ayuda que muestran la pausa y el README.
 const HELP := "WASD mover   RATÓN apuntar\nQ o clic derecho linterna\nE coger pila u objeto, entregar en el carro
-Mantener E: tareas y reanimar   F dardo\nESPACIO correr   F11 pantalla completa"
+Mantener E: tareas y reanimar   F o clic izq. dardo\nESPACIO correr   F11 pantalla completa"
 
 
 func _ready() -> void:

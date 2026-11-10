@@ -175,7 +175,8 @@ func _build_pause() -> void:
 	box.add_child(_role_label)
 	# Los controles completos están en "Cómo jugar": aquí no caben en 180 px de alto.
 	var help := Label.new()
-	help.text = "Q linterna   E usar   F dardo   ESPACIO correr"
+	help.text = "Q linterna  E usar  F o clic izq. dardo
+ESPACIO correr"
 	help.add_theme_color_override("font_color", Color("8a93a0"))
 	box.add_child(help)
 	var buttons := HBoxContainer.new()
