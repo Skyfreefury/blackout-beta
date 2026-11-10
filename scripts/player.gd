@@ -232,6 +232,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("toggle_light") and battery > 0.0 and blind_time == 0.0:
 		light_on = not light_on
+	elif event.is_action_pressed("fire_dart") and Net.upgrade_level(get_multiplayer_authority(), "dart") > 0:
+		_request_dart.rpc_id(1, flashlight.global_rotation)
 	elif event.is_action_pressed("interact"):
 		start_interact()
 	elif event.is_action_released("interact"):
@@ -529,6 +531,51 @@ func _request_deposit() -> void:
 	deposited.emit(carried_total())
 	carried_kinds = PackedInt32Array()
 	carried_values = PackedInt32Array()
+
+
+## Solo en el anfitrión: dispara un dardo en la dirección de la linterna. Gasta uno aunque falle.
+## Acierta al Nonato más cercano dentro de DART_WIDTH px de la línea, antes de la primera pared.
+@rpc("any_peer", "call_local", "reliable")
+func _request_dart(angle: float) -> void:
+	var id := get_multiplayer_authority()
+	if not multiplayer.is_server() or _sender() != id or not can_act() \
+			or Net.upgrade_level(id, "dart") <= 0:
+		return
+	Net.consume_upgrade(id, "dart")
+	var origin := global_position
+	var dir := Vector2.from_angle(angle)
+	var end := origin + dir * Shop.DART_RANGE
+	var query := PhysicsRayQueryParameters2D.create(origin, end, 1)
+	var wall := get_world_2d().direct_space_state.intersect_ray(query)
+	if not wall.is_empty():
+		end = wall.position
+	var reach := origin.distance_to(end)
+	var target: Monster = null
+	var best := INF
+	for m: Monster in get_tree().get_nodes_in_group("monster"):
+		var to := m.global_position - origin
+		var along := to.dot(dir)
+		if along > 0.0 and along <= reach + 8.0 and absf(to.cross(dir)) <= Shop.DART_WIDTH and along < best:
+			best = along
+			target = m
+	if target != null:
+		end = origin + dir * best
+		target.tranquilize(Shop.DART_SLEEP)
+	_dart_fx.rpc(origin, end)
+
+
+@rpc("authority", "call_local", "reliable")
+func _dart_fx(from: Vector2, to: Vector2) -> void:
+	Sfx.play_at("dart", from)
+	var line := Line2D.new()
+	line.width = 1.0
+	line.default_color = Color(0.85, 0.95, 1.0, 0.9)
+	line.points = PackedVector2Array([from, to])
+	line.top_level = true
+	add_child(line)
+	var tween := line.create_tween()
+	tween.tween_property(line, "modulate:a", 0.0, 0.25)
+	tween.tween_callback(line.queue_free)
 
 
 ## Lo envía el anfitrión al dueño: el chillido apaga la linterna y no se puede encender.

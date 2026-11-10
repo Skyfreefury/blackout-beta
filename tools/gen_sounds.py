@@ -154,6 +154,10 @@ def main() -> None:
     shriek = [max(-0.45, min(0.45, x * 3.0)) for x in shriek]
     save("monster_scream", envelope(lowpass(mix(shriek, noise(1.0, 0.35)), 3200), 0.02, 0.6), 0.8)
 
+    # Dardo tranquilizante: soplido de aire comprimido con chasquido.
+    puff = envelope(lowpass(noise(0.18, 1.0), 2600), 0.003, 0.12)
+    save("dart", mix(puff, decay(tone(1800, 0.05, "square", 0.25), 90)), 0.6)
+
     # Latido: dos golpes por segundo y medio, en bucle.
     beat = mix(at(thump(55, 0.18), 0.0, 1.0), at(gain(thump(48, 0.2), 0.7), 0.22, 1.0))
     save("heartbeat_loop", beat, 0.9)

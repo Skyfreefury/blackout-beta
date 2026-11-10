@@ -186,6 +186,14 @@ func _setup(main: Node) -> void:
 			# El botiquín levanta al jugador solo; el segundo golpe ya mata.
 			player.hit()
 			main.hud.show_end(true, 125.0, PackedStringArray(["Jugador"]), true, 1)
+		"dart":
+			# Nonato a 5 casillas en línea recta: el dardo lo duerme 5 s.
+			Net.bank = 1000
+			Net.buy("dart")
+			player.global_position = level.cell_center(Vector2i(20, 16))
+			monster.global_position = level.cell_center(Vector2i(25, 16))
+			player.light_on = false
+			get_tree().create_timer(0.5).timeout.connect(func(): player._request_dart(0.0))
 		"scream":
 			# Nonato mejorado iluminado de cerca: debe chillar y apagar la linterna.
 			monster.enhanced = true
@@ -248,6 +256,7 @@ func _report(main: Node) -> void:
 	line += " role=%d gen0=%.2f battery_max=%.0f run=%.0f angle=%.0f" % [p.role, main.tasks[0].progress if not main.tasks.is_empty() else 0.0, p.battery_max, p.run_speed, p.light_angle]
 	line += " money=%d quota=%d carried=%d loot=%d" % [main.money, main.quota, p.carried_values.size(), get_tree().get_nodes_in_group("loot").size()]
 	line += " monsters=%d enhanced=%s blind=%.1f light=%s" % [main.monsters.size(), monster.enhanced, p.blind_time, p.light_on]
+	line += " asleep=%.1f" % monster._sleep_timer
 	line += " bank=%d upgrades=%s max_carry=%d" % [Net.bank, Net.upgrades, p.max_carry]
 	line += " level=%d tasks=%s" % [Net.game_level, ",".join((main.tasks as Array).map(func(t): return t.kind))]
 	line += " seed=%d gens_at=%s" % [main.level.map_seed, ",".join((main.tasks as Array).map(func(g): return str(main.level.world_to_cell(g.global_position))))]

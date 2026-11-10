@@ -42,6 +42,8 @@ const PROBES: Array[Vector2] = [
 var level: Level
 ## Aturdido por una linterna. Se sincroniza: los demás lo ven temblar.
 var frozen := false
+## Hora (ms) hasta la que duerme por un dardo, en todos los equipos. Solo para efectos.
+var asleep_until := 0
 ## Versión mejorada. Se decide al crearlo, igual en todos los equipos.
 var enhanced := false
 
@@ -57,6 +59,8 @@ var _crawl_sound: AudioStreamPlayer2D
 var _was_frozen := false
 var _freeze_cooldown := 0.0
 var _stun_timer := 0.0
+## Segundos dormido por un dardo tranquilizante. No se mueve, no ataca ni chilla.
+var _sleep_timer := 0.0
 var _unlit_time := 99.0
 ## Jugadores que le están dando con la linterna en este fotograma (solo en el anfitrión).
 var _watchers: Array[Player] = []
@@ -82,7 +86,8 @@ func _physics_process(delta: float) -> void:
 	_animate(delta)
 	if frozen:
 		velocity = Vector2.ZERO
-		sprite.position = Vector2(randi_range(-1, 1), randi_range(-1, 1))
+		var asleep := Time.get_ticks_msec() < asleep_until
+		sprite.position = Vector2.ZERO if asleep else Vector2(randi_range(-1, 1), randi_range(-1, 1))
 		return
 	sprite.position = Vector2.ZERO
 	if not multiplayer.is_server():
@@ -129,11 +134,29 @@ func _update_light_reaction(delta: float) -> void:
 		if _recent_watchers[player] <= 0.0 or not is_instance_valid(player):
 			_recent_watchers.erase(player)
 	_stun_timer = maxf(_stun_timer - delta, 0.0)
-	frozen = _stun_timer > 0.0
-	if enhanced:
+	_sleep_timer = maxf(_sleep_timer - delta, 0.0)
+	frozen = _stun_timer > 0.0 or _sleep_timer > 0.0
+	if enhanced and _sleep_timer == 0.0:
 		_scream_timer = maxf(_scream_timer - delta, 0.0)
 		if _scream_timer == 0.0 and not _watchers.is_empty():
 			_scream()
+
+
+## Solo en el anfitrión: lo duerme un dardo tranquilizante.
+func tranquilize(seconds: float) -> void:
+	_sleep_timer = maxf(_sleep_timer, seconds)
+	_sleep_fx.rpc(seconds)
+
+
+## Dormido se ve azulado y sin temblar.
+@rpc("authority", "call_local", "reliable")
+func _sleep_fx(seconds: float) -> void:
+	var base := sprite.modulate
+	sprite.modulate = Color(0.55, 0.65, 1.0)
+	var tween := create_tween()
+	tween.tween_interval(seconds - 0.5)
+	tween.tween_property(sprite, "modulate", base, 0.5)
+	asleep_until = Time.get_ticks_msec() + int(seconds * 1000.0)
 
 
 ## Solo en el anfitrión: apaga las linternas cercanas durante unos segundos.
