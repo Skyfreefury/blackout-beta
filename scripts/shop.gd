@@ -15,7 +15,7 @@ const ITEMS := {
 	"medkit": {"name": "Botiquín", "price": 180, "max": 1,
 		"text": "Botiquín: al caer te reanimas solo en 6 s. Se gasta al usarlo."},
 	"dart": {"name": "Dardo", "price": 160, "max": 2,
-		"text": "Dardo tranquilizante: clic izquierdo o G. Duerme al Nonato 5 s. Cada compra es un dardo."},
+		"text": "Dardo tranquilizante: tecla F. Duerme al Nonato 5 s. Cada compra es un dardo."},
 }
 const BATTERY_STEP := 0.25
 const SPEED_STEP := 0.10
