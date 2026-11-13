@@ -97,6 +97,11 @@ func _setup(main: Node) -> void:
 		player.aim_override = player.global_position + Vector2(50, 0)
 		# Espera a que el anfitrión reciba la nueva posición antes de pedir la pila.
 		get_tree().create_timer(0.5).timeout.connect(player.start_interact)
+	if _args.has("trailer"):
+		# Planos del tráiler: tools/trailer/trailer_shots.gd.
+		var shots: Node = load("res://tools/trailer/trailer_shots.gd").new()
+		main.add_child(shots)
+		await shots.setup(main, _args)
 	match _args.get("scenario", ""):
 		"lit", "dark":
 			player.global_position = level.cell_center(Vector2i(20, 5))
