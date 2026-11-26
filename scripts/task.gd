@@ -14,9 +14,10 @@ const KINDS := {
 	"archive": {"label": "Recoger los historiales", "time": 6.0, "sprite": "res://art/sprites/task_archive.png"},
 	"computer": {"label": "Reiniciar el ordenador", "time": 8.0, "sprite": "res://art/sprites/task_computer.png"},
 	"valve": {"label": "Cerrar la válvula de vapor", "time": 5.0, "sprite": "res://art/sprites/task_valve.png"},
+	"locked": {"label": "Abrir el armario de fármacos", "time": 4.0, "sprite": "res://art/sprites/task_locked.png", "key": true},
 }
 ## Símbolo del mapa de cada tipo que no es generador.
-const SYMBOLS := {"a": "archive", "o": "computer", "v": "valve"}
+const SYMBOLS := {"a": "archive", "o": "computer", "v": "valve", "f": "locked"}
 
 var kind := "generator"
 ## Zona de lámparas que enciende. 0 si no es un generador.
@@ -46,6 +47,11 @@ func hold_time() -> float:
 
 func label() -> String:
 	return KINDS[kind]["label"]
+
+
+## El armario solo se abre si el jugador lleva la llave.
+func needs_key() -> bool:
+	return KINDS[kind].get("key", false)
 
 
 func _process(delta: float) -> void:

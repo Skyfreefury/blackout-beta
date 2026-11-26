@@ -1,4 +1,4 @@
-"""Sprites de tareas (archivador, ordenador, válvula), objetos de valor y carro de entrega.
+"""Sprites de tareas (archivador, ordenador, válvula, armario cerrado y su llave), objetos de valor y carro de entrega.
 
 Uso: python tools/gen_task_sprites.py
 Tareas a 16x24 como el generador, objetos a 10x10 y carro a 16x16. Paleta de gen_placeholders.py.
@@ -51,6 +51,30 @@ def valve():
     rect(img, 11, 6, 12, 14, "red")
     rect(img, 7, 6, 8, 14, "blood")                # radios
     rect(img, 3, 10, 12, 10, "blood")
+    return outline(img)
+
+
+def locked():
+    """Armario de fármacos de cristal con candado."""
+    img = canvas(16, 24)
+    rect(img, 1, 3, 14, 22, "slate")
+    rect(img, 3, 5, 12, 13, "night")               # cristal
+    rect(img, 3, 15, 12, 20, "night")
+    px(img, [(4, 7), (6, 7), (9, 7), (5, 11), (8, 11), (10, 11), (4, 17), (7, 17), (10, 17)], "white")
+    px(img, [(5, 6), (9, 10), (6, 16)], "red")     # frascos
+    rect(img, 7, 13, 8, 14, "yellow")              # candado
+    px(img, [(7, 12), (8, 12)], "light")
+    px(img, [(4, 5), (3, 6)], "light")             # reflejo
+    return outline(img)
+
+
+def key():
+    """Llave dorada."""
+    img = canvas(10, 10)
+    rect(img, 1, 3, 3, 5, "yellow")
+    px(img, [(2, 4)], "night")
+    rect(img, 4, 4, 8, 4, "yellow")
+    px(img, [(7, 5), (8, 5), (8, 6)], "yellow")
     return outline(img)
 
 
@@ -164,7 +188,7 @@ def shop_dart():
 
 
 def main() -> None:
-    for name, make in (("task_archive", archive), ("task_computer", computer), ("task_valve", valve),
+    for name, make in (("task_archive", archive), ("task_computer", computer), ("task_valve", valve), ("task_locked", locked), ("key", key),
                        ("loot_samples", loot_samples), ("loot_tools", loot_tools),
                        ("loot_watch", loot_watch), ("loot_microscope", loot_microscope), ("cart", cart),
                        ("shop_battery", shop_battery), ("shop_shoes", shop_shoes), ("shop_bag", shop_bag),

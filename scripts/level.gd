@@ -22,7 +22,7 @@ const TILES_TEXTURE := preload("res://art/sprites/tiles.png")
 ## Capa de física de los obstáculos: frenan el paso pero no cortan la luz.
 const OBSTACLE_LAYER := 16
 ## Caracteres que el monstruo trata como bloqueo al planear su camino.
-const MONSTER_BLOCKING := "#XEciwt123aovK"
+const MONSTER_BLOCKING := "#XEciwt123aovfK"
 
 @export_file("*.txt") var map_path := "res://maps/hospital.txt"
 ## Semilla del reparto de objetos. El anfitrión la elige y la envía, así todos ven el mismo mapa.
@@ -251,7 +251,7 @@ func _place(cell: Vector2i) -> void:
 		"D": cart_position = center
 		"L": lamp_spawns.append([center, 0])
 		"1", "2", "3": task_spawns.append([center, "generator", int(c)])
-		"a", "o", "v": task_spawns.append([center, Task.SYMBOLS[c], 0])
+		"a", "o", "v", "f": task_spawns.append([center, Task.SYMBOLS[c], 0])
 		"4", "5", "6": lamp_spawns.append([center, int(c) - 3])
 
 

@@ -199,6 +199,31 @@ func _setup(main: Node) -> void:
 				presser.autostart = true
 				presser.timeout.connect(func(): if player.grabbed: player._request_struggle())
 				add_child(presser)
+		"key":
+			# Coge la llave, va al armario y lo abre. Con --procgen y una semilla con armario.
+			var cabinet: Task = null
+			for t: Task in main.tasks:
+				if t.needs_key():
+					cabinet = t
+			var key: Node2D = get_tree().get_first_node_in_group("keys")
+			if cabinet == null or key == null:
+				print("RESULT scenario=key sin armario en esta semilla")
+				return
+			monster.global_position = Vector2(-1000, -1000)
+			player.global_position = cabinet.global_position + Vector2(0, 14)
+			await _wait(2)
+			player.start_interact()
+			await _wait(3)
+			var before := cabinet.progress
+			player.global_position = key.global_position
+			await _wait(2)
+			player.start_interact()
+			await _wait(3)
+			player.global_position = cabinet.global_position + Vector2(0, 14)
+			await _wait(2)
+			player.start_interact()
+			await _wait(300)
+			print("KEY before_key=%.2f has_key=%s opened=%s" % [before, player.has_key, cabinet.repaired])
 		"shoproom":
 			# Compra en dos mostradores con 1000 €: zapatillas (150) y dardo (160).
 			Net.bank = 1000

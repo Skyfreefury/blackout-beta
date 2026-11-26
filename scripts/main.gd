@@ -6,6 +6,8 @@ extends Node2D
 const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const MONSTER_SCENE := preload("res://scenes/monster.tscn")
 const TASK_SCENE := preload("res://scenes/task.tscn")
+## Distancia mínima entre el armario de fármacos y su llave, en px.
+const KEY_MIN_DISTANCE := 160.0
 const SPAWN_OFFSETS: Array[Vector2] = [Vector2(0, 0), Vector2(14, 0), Vector2(0, 14), Vector2(14, 14)]
 ## Cuota de botín: 100 € más 100 € por nivel. Objetos de valor: 8 más 2 por nivel.
 const QUOTA_BASE := 0
@@ -135,8 +137,12 @@ func _spawn_world() -> void:
 	# Tipo y valor de cada objeto con la semilla del mapa: iguales en todos los equipos.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = level.map_seed + 1
+	var key_spot := _key_spot()
 	for i in level.loot_spawns.size():
 		var rolled := Loot.roll(rng)
+		if i == key_spot:
+			_add_key("Key", level.loot_spawns[i])
+			continue
 		_add_loot("Loot%d" % i, level.loot_spawns[i], rolled[0], rolled[1])
 	if level.cart_position != Vector2.ZERO:
 		var cart := Sprite2D.new()
@@ -173,6 +179,37 @@ func _spawn_world() -> void:
 		counter.item = items[i % items.size()]
 		counter.position = level.counter_spawns[i]
 		entities.add_child(counter)
+
+
+## Sitio de botín donde aparece la llave del armario: al azar entre los que están a más de
+## KEY_MIN_DISTANCE px del armario, o el más lejano. -1 si no hay armario en la partida.
+func _key_spot() -> int:
+	var cabinet: Task = null
+	for t: Task in tasks:
+		if t.needs_key():
+			cabinet = t
+	if cabinet == null or level.loot_spawns.is_empty():
+		return -1
+	var far: Array[int] = []
+	var farthest := 0
+	for i in level.loot_spawns.size():
+		var d := level.loot_spawns[i].distance_to(cabinet.position)
+		if d >= KEY_MIN_DISTANCE:
+			far.append(i)
+		if d > level.loot_spawns[farthest].distance_to(cabinet.position):
+			farthest = i
+	if far.is_empty():
+		return farthest
+	var rng := RandomNumberGenerator.new()
+	rng.seed = level.map_seed + 2
+	return far[rng.randi_range(0, far.size() - 1)]
+
+
+func _add_key(node_name: String, pos: Vector2) -> void:
+	var key := KeyPickup.new()
+	key.name = node_name
+	key.position = pos
+	entities.add_child(key)
 
 
 func _add_loot(node_name: String, pos: Vector2, kind: int, value: int) -> void:
@@ -263,6 +300,9 @@ func _setup_player(p: Player) -> void:
 	if multiplayer.is_server():
 		p.deposited.connect(_on_deposited)
 		p.dropped_loot.connect(_on_dropped_loot)
+		p.dropped_key.connect(_on_dropped_key)
+	if p.is_local():
+		p.notice.connect(hud.flash_message)
 	# En la sala tienda hay luz: la linterna empieza apagada.
 	if Net.in_shop:
 		p.light_on = false
@@ -303,6 +343,17 @@ func _on_dropped_loot(kinds: PackedInt32Array, values: PackedInt32Array, pos: Ve
 @rpc("authority", "call_local", "reliable")
 func _spawn_dropped(node_name: String, pos: Vector2, kind: int, value: int) -> void:
 	_add_loot(node_name, pos, kind, value)
+
+
+## Solo en el anfitrión: la llave de un jugador caído o que se ha ido queda en el suelo.
+func _on_dropped_key(pos: Vector2) -> void:
+	_drops += 1
+	_spawn_key.rpc("Key%d" % _drops, pos)
+
+
+@rpc("authority", "call_local", "reliable")
+func _spawn_key(node_name: String, pos: Vector2) -> void:
+	_add_key(node_name, pos)
 
 
 ## Si el jugador local ya no juega, la cámara sigue a otro que siga activo.
@@ -378,8 +429,12 @@ func _objective_text() -> String:
 		lines.append("- Lleva objetos de valor al carro")
 	# Tareas iguales en una línea: "Reparar el generador x2".
 	var counts := {}
+	var key_held := get_tree().get_nodes_in_group("players").any(func(p): return p.has_key)
 	for t: Task in pending:
-		counts[t.label()] = counts.get(t.label(), 0) + 1
+		var label := t.label()
+		if t.needs_key() and not key_held:
+			label += " (busca la llave)"
+		counts[label] = counts.get(label, 0) + 1
 	for label: String in counts:
 		lines.append("- " + label + (" x%d" % counts[label] if counts[label] > 1 else ""))
 	return "\n".join(lines)
@@ -424,6 +479,8 @@ func _end_game(victory: bool, time: float, survivors: PackedStringArray) -> void
 
 func _on_peer_left(id: int) -> void:
 	var node := entities.get_node_or_null(str(id))
+	if node is Player and node.has_key:
+		_on_dropped_key(node.global_position)
 	if node != null:
 		node.queue_free()
 

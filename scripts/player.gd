@@ -9,6 +9,10 @@ signal state_changed
 signal deposited(amount: int)
 ## Solo en el anfitrión: el jugador ha caído y suelta la mochila en el suelo.
 signal dropped_loot(kinds: PackedInt32Array, values: PackedInt32Array, pos: Vector2)
+## Solo en el anfitrión: la llave cae al suelo al derribar al jugador.
+signal dropped_key(pos: Vector2)
+## Aviso corto para el HUD del jugador local, por ejemplo "Necesitas la llave".
+signal notice(text: String)
 
 const WALK_SPEED := 60.0
 const RUN_SPEED := 100.0
@@ -100,6 +104,8 @@ var escaped := false:
 ## Mochila: tipo y valor de cada objeto llevado. La decide el anfitrión.
 var carried_kinds := PackedInt32Array()
 var carried_values := PackedInt32Array()
+## Lleva la llave del armario de fármacos. No ocupa hueco de la mochila.
+var has_key := false
 ## Derribos recibidos. Con 1, el siguiente golpe mata.
 var down_count := 0
 var down_time := 0.0
@@ -369,6 +375,9 @@ func _grab_tick(delta: float) -> void:
 ## Solo en el anfitrión. Primer derribo o muerte si ya estaba herido.
 func _knock_down() -> void:
 	_drop_loot()
+	if has_key:
+		has_key = false
+		dropped_key.emit(global_position)
 	if down_count >= 1:
 		is_dead = true
 	else:
@@ -429,6 +438,15 @@ func start_interact() -> void:
 		hold_target = target
 		_set_server_target.rpc_id(1, target.get_path())
 		return
+	for key: Node2D in get_tree().get_nodes_in_group("keys"):
+		if global_position.distance_to(key.global_position) <= PICKUP_RADIUS:
+			_request_key.rpc_id(1, key.get_path())
+			return
+	for task: Task in get_tree().get_nodes_in_group("tasks"):
+		if task.needs_work() and task.needs_key() and not has_key \
+				and global_position.distance_to(task.global_position) <= Task.INTERACT_RANGE:
+			notice.emit("Cerrado: necesitas la llave")
+			return
 	for pickup: Node2D in get_tree().get_nodes_in_group("batteries"):
 		if global_position.distance_to(pickup.global_position) <= PICKUP_RADIUS:
 			_request_pickup.rpc_id(1, pickup.get_path())
@@ -450,7 +468,8 @@ func _find_hold_target() -> Node:
 				and global_position.distance_to(other.global_position) <= REVIVE_RANGE:
 			return other
 	for task: Task in get_tree().get_nodes_in_group("tasks"):
-		if task.needs_work() and global_position.distance_to(task.global_position) <= Task.INTERACT_RANGE:
+		if task.needs_work() and (has_key or not task.needs_key()) \
+				and global_position.distance_to(task.global_position) <= Task.INTERACT_RANGE:
 			return task
 	return null
 
@@ -515,6 +534,7 @@ func _server_tick(delta: float) -> void:
 			revive_progress = 0.0
 	if _server_target != null:
 		var valid: bool = is_instance_valid(_server_target) and can_act() and _server_target.needs_work() \
+			and (has_key or not (_server_target is Task and _server_target.needs_key())) \
 			and global_position.distance_to(_server_target.global_position) <= _range_for(_server_target) + NET_TOLERANCE
 		if valid:
 			_server_target.add_work(delta * work_factor(_server_target))
@@ -641,6 +661,19 @@ func _request_loot(loot_path: NodePath) -> void:
 	carried_kinds.append(loot.kind)
 	carried_values.append(loot.value)
 	loot.take.rpc()
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _request_key(key_path: NodePath) -> void:
+	if not multiplayer.is_server() or _sender() != get_multiplayer_authority() or not can_act() or has_key:
+		return
+	var key := get_node_or_null(key_path) as KeyPickup
+	if key == null or key.is_queued_for_deletion():
+		return
+	if global_position.distance_to(key.global_position) > PICKUP_RADIUS + NET_TOLERANCE:
+		return
+	has_key = true
+	key.take.rpc()
 
 
 @rpc("any_peer", "call_local", "reliable")

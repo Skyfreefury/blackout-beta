@@ -75,6 +75,8 @@ func _process(delta: float) -> void:
 	_bag.position.y = size.y - 38
 	_bag.text = "" if player == null or player.carried_values.is_empty() \
 		else "Mochila %d/%d  %d €" % [player.carried_values.size(), player.max_carry, player.carried_total()]
+	if player != null and player.has_key:
+		_bag.text += ("   " if not _bag.text.is_empty() else "") + "Llave"
 	var darts := 0 if player == null else Net.upgrade_level(player.get_multiplayer_authority(), "dart")
 	if darts > 0:
 		_bag.text += ("   " if not _bag.text.is_empty() else "") + "Dardos %d" % darts

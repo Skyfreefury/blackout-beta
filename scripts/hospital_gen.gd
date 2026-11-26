@@ -16,8 +16,8 @@ const TILE := 16
 const LAMP_RANGE := 42.0
 ## Casillas libres que dejan los muebles y las tareas alrededor de cada puerta.
 const DOOR_CLEARANCE := 3
-const PLAYER_BLOCKING := "#ciwt123aov"
-const MONSTER_BLOCKING := "#XEciwt123aov"
+const PLAYER_BLOCKING := "#ciwt123aovf"
+const MONSTER_BLOCKING := "#XEciwt123aovf"
 const MONSTER_SPOTS := 5
 ## Muebles por tipo de sala: [símbolo, cantidad, lado de la pared].
 const DECOR := {
@@ -164,6 +164,8 @@ func _build(dims: Array) -> void:
 	_spread(upper, "a", 2)
 	_spread(upper + [er], "o", 2)
 	_spread(base_rooms, "v", 3)
+	# Armario de fármacos cerrado: su llave aparece lejos, en un sitio de botín (scripts/main.gd).
+	_spread(upper, "f", 2)
 
 	# Luces de emergencia: 3 o 4 por zona, lejos de las puertas.
 	for zone in [1, 2, 3]:
@@ -192,7 +194,7 @@ func _validate() -> bool:
 			var c := _at(cell)
 			if (c == "." or c == "," or "BM$D456".contains(c)) and not walk.has(cell):
 				return false
-			if "123aov".contains(c) and not _touches_any(cell, walk):
+			if "123aovf".contains(c) and not _touches_any(cell, walk):
 				return false
 	# Monstruo: rejilla reducida para su cuerpo. Con todas las luces de emergencia encendidas
 	# llega a todas las salas y a todos los pasos.

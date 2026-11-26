@@ -29,7 +29,8 @@ Antes: colocación aleatoria. El hospital marca 3 sitios por generador, 3 para e
 
 - Implementado: catálogo de 10 en el hospital (3 generadores, 2 archivadores de 6 s, 2 ordenadores de 8 s, 3 válvulas de 5 s). Cada nivel deja nivel + 1 tareas. Ganar pasa al nivel siguiente y perder lo repite.
 - Implementado: mapas más grandes por nivel y Nonatos por nivel (+1 desde el nivel 3 y otro cada 2 niveles, sumados a los de jugadores, tope 4).
-- Pendiente: la llave y el ascensor necesitan inventario.
+- Llave hecha el 2026-11-26: armario de fármacos cerrado (símbolo `f`, 2 candidatos en las salas de arriba, 4 s). Su llave aparece en un sitio de botín a más de 160 px. Va aparte de la mochila (`Player.has_key`), cae al suelo si derriban a quien la lleva o si se desconecta. Sin llave, E en el armario avisa "Cerrado: necesitas la llave".
+- Pendiente: el ascensor.
 - Necesitaba: tareas como objetos con el mismo sistema de "mantener E" que los generadores, y monstruos que no se estorben entre sí.
 
 ## Modo extracción con botín (extraction looter)
@@ -85,7 +86,7 @@ Cambios necesarios: generador de planos con catálogo de salas por escenario (ho
 - E o ESPACIO suman 0,11 al forcejeo, que baja 0,3 por segundo. Lleno: te sueltas y el Nonato queda aturdido 1,2 s.
 - Un compañero que alumbra al Nonato suma 0,45 por segundo; un dardo o un aturdimiento te suelta al momento.
 - Vida a 0: derribado como antes. Reanimado vuelves con 50; la vida sube 4 por segundo tras 4 s sin daño.
-- Al morir, animación de 2,6 s: el Nonato se abalanza y sale "HAS MUERTO".
+- Al morir, animación por fases de unos 4,5 s (`art/sprites/nonato_kill.png`) y sale "HAS MUERTO".
 - Música de Suno en `audio/music/`: menú, explorar, persecución (Nonato a menos de 150 px), victoria y muerte. Los originales están en `art/raw/suno/`.
 
 ## Por hacer (anotado el 2026-11-26)
