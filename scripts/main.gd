@@ -16,6 +16,10 @@ const LOOT_PER_LEVEL := 2
 const MAX_MONSTERS := 4
 ## Velocidad de caza del Nonato por nivel: en el nivel 1 se le puede dejar atrás corriendo.
 const MONSTER_SPEED_BY_LEVEL := [0.85, 0.95]
+## Sala tienda entre niveles: mapa, luz de ambiente y segundos en el ascensor para salir.
+const SHOP_MAP := "res://maps/shop.txt"
+const SHOP_DARKNESS := Color(0.22, 0.22, 0.27)
+const LIFT_TIME := 1.5
 ## Distancia al monstruo a la que empieza a oírse el latido.
 const HEARTBEAT_RANGE := 220.0
 
@@ -37,6 +41,7 @@ var _victory := false
 var _drops := 0
 var _enhanced_monsters := false
 var _heartbeat: AudioStreamPlayer
+var _lift_time := 0.0
 
 @onready var level: Level = $Level
 @onready var entities: Node2D = $Entities
@@ -45,6 +50,12 @@ var _heartbeat: AudioStreamPlayer
 
 
 func _ready() -> void:
+	# --shoproom: prueba de la sala tienda sin pasar por un nivel.
+	if OS.get_cmdline_user_args().has("--shoproom"):
+		Net.in_shop = true
+	if Net.in_shop:
+		level.map_path = SHOP_MAP
+		$Darkness.color = SHOP_DARKNESS
 	var map_arg := _user_arg("map")
 	if not map_arg.is_empty():
 		level.map_path = map_arg
@@ -72,7 +83,8 @@ func _ready() -> void:
 	_enhanced_monsters = crowd == 2 or crowd >= 4
 	# Hospital nuevo en cada partida, más grande con el nivel. Las pruebas con --scenario
 	# usan el mapa fijo porque colocan al jugador en casillas concretas; --procgen lo fuerza.
-	if map_arg.is_empty() and (_user_arg("scenario").is_empty() or OS.get_cmdline_user_args().has("--procgen")):
+	if map_arg.is_empty() and not Net.in_shop \
+			and (_user_arg("scenario").is_empty() or OS.get_cmdline_user_args().has("--procgen")):
 		level.procedural_level = Net.game_level
 	level.build()
 	_spawn_world()
@@ -145,7 +157,15 @@ func _spawn_world() -> void:
 		m.position = level.monster_spawns[i]
 		entities.add_child(m)
 		monsters.append(m)
-	monster = monsters[0]
+	monster = monsters[0] if not monsters.is_empty() else null
+	# Sala tienda: un objeto de Shop en cada mostrador.
+	var items := Shop.ids()
+	for i in level.counter_spawns.size():
+		var counter := ShopCounter.new()
+		counter.name = "Counter%d" % i
+		counter.item = items[i % items.size()]
+		counter.position = level.counter_spawns[i]
+		entities.add_child(counter)
 
 
 func _add_loot(node_name: String, pos: Vector2, kind: int, value: int) -> void:
@@ -164,6 +184,11 @@ func _physics_process(delta: float) -> void:
 	if not _started or _ended:
 		return
 	elapsed += delta
+	if Net.in_shop:
+		hud.objective = _shop_text()
+		if multiplayer.is_server():
+			_check_lift(delta)
+		return
 	hud.objective = _objective_text()
 	_follow_spectated()
 	_update_heartbeat()
@@ -176,8 +201,14 @@ func _physics_process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("restart") and multiplayer.is_server() and (_ended or not Net.is_online()):
-		Net.start_game(Net.game_level + 1 if _victory else Net.game_level)
+	if event.is_action_pressed("restart") and multiplayer.is_server() and Net.in_shop:
+		Net.start_game(Net.game_level)
+	elif event.is_action_pressed("restart") and multiplayer.is_server() and (_ended or not Net.is_online()):
+		# Tras ganar se pasa por la sala tienda; tras perder se repite el nivel.
+		if _victory:
+			Net.start_game(Net.game_level + 1, true)
+		else:
+			Net.start_game(Net.game_level)
 	elif event.is_action_pressed("ui_cancel") and not _ended:
 		hud.toggle_pause()
 
@@ -225,6 +256,9 @@ func _setup_player(p: Player) -> void:
 	if multiplayer.is_server():
 		p.deposited.connect(_on_deposited)
 		p.dropped_loot.connect(_on_dropped_loot)
+	# En la sala tienda hay luz: la linterna empieza apagada.
+	if Net.in_shop:
+		p.light_on = false
 	if p.name.to_int() == multiplayer.get_unique_id():
 		player = p
 		hud.player = p
@@ -289,6 +323,26 @@ func _update_heartbeat() -> void:
 	_heartbeat.pitch_scale = 1.0 + 0.6 * closeness
 	if not _heartbeat.playing:
 		_heartbeat.play()
+
+
+func _shop_text() -> String:
+	var all := get_tree().get_nodes_in_group("players")
+	var inside := all.filter(func(p: Player) -> bool: return level.is_lift(p.global_position)).size()
+	return "Tienda   Banco %d €\nE junto a un mostrador: comprar\nAscensor al nivel %d: %d/%d dentro" % [
+		Net.bank, Net.game_level, inside, all.size()]
+
+
+## Solo en el anfitrión: con todos los jugadores en el ascensor durante LIFT_TIME, sigue el nivel.
+func _check_lift(delta: float) -> void:
+	var all := get_tree().get_nodes_in_group("players")
+	if all.is_empty() or not all.all(func(p: Player) -> bool: return level.is_lift(p.global_position)):
+		_lift_time = 0.0
+		return
+	_lift_time += delta
+	if _lift_time >= LIFT_TIME and not _ended:
+		_ended = true
+		print("LIFT level=%d" % Net.game_level)
+		Net.start_game(Net.game_level)
 
 
 func _objective_text() -> String:

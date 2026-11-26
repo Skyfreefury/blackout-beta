@@ -25,9 +25,6 @@ var _pause := PanelContainer.new()
 var _end := PanelContainer.new()
 var _end_title := Label.new()
 var _end_text := Label.new()
-var _shop_title := Label.new()
-## Mejora -> botón de compra.
-var _shop_buttons := {}
 var _end_hint := Label.new()
 var _role_label := Label.new()
 var _bag := Label.new()
@@ -97,27 +94,11 @@ func show_end(victory: bool, time: float, survivors: PackedStringArray, is_host:
 	var lines := PackedStringArray(["Tiempo %d:%02d" % [minutes, seconds]])
 	if victory:
 		lines.append("Supervivientes: " + ", ".join(survivors))
+		lines.append("Banco: %d €" % Net.bank)
 	_end_text.text = "\n".join(lines)
-	_refresh_shop()
-	var next := ("R: nivel %d" % (level + 1)) if victory else ("R: repetir nivel %d" % level)
+	var next := "R: ir a la tienda" if victory else ("R: repetir nivel %d" % level)
 	_end_hint.text = (next + "   Esc: menú") if is_host else "Esperando al anfitrión   Esc: menú"
 	_end.visible = true
-
-
-## Precios, compras y banco del jugador local.
-func _refresh_shop() -> void:
-	var id := multiplayer.get_unique_id()
-	_shop_title.text = "TIENDA   Banco: %d €" % Net.bank
-	for item: String in _shop_buttons:
-		var b: Button = _shop_buttons[item]
-		var owned := Net.upgrade_level(id, item)
-		var top: int = Shop.ITEMS[item].max
-		var cost := Shop.price(item, owned)
-		if owned >= top:
-			b.text = "%s %d/%d" % [Shop.ITEMS[item].name, owned, top]
-		else:
-			b.text = "%s %d/%d  %d €" % [Shop.ITEMS[item].name, owned, top, cost]
-		b.disabled = owned >= top or Net.bank < cost
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -203,24 +184,9 @@ func _build_end() -> void:
 	box.add_child(_end_title)
 	_end_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_end_text)
-	# Tienda: cada jugador compra sus mejoras con el banco común.
-	_shop_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_shop_title.add_theme_color_override("font_color", BATTERY_COLOR)
-	box.add_child(_shop_title)
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 4)
-	grid.add_theme_constant_override("v_separation", 3)
-	for item: String in Shop.ids():
-		var b := _button("", Net.buy.bind(item))
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		grid.add_child(b)
-		_shop_buttons[item] = b
-	box.add_child(grid)
 	_end_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_end_hint)
 	_end.add_child(box)
-	Net.shop_changed.connect(_refresh_shop)
 	_end.visible = false
 	_place_center(_end)
 
@@ -246,6 +212,10 @@ func _make_theme() -> Theme:
 	t.default_font_size = 8
 	for type in ["Label", "Button"]:
 		t.set_color("font_color", type, STAMINA_COLOR)
+	# Sombra de 1 px para leer el texto sobre suelo iluminado.
+	t.set_color("font_shadow_color", "Label", Color(0, 0, 0, 0.85))
+	t.set_constant("shadow_offset_x", "Label", 1)
+	t.set_constant("shadow_offset_y", "Label", 1)
 	t.set_stylebox("panel", "PanelContainer", _box(Color(0.04, 0.04, 0.06, 0.92), Color("34384a"), 6))
 	t.set_stylebox("normal", "Button", _box(Color("1d1f2a")))
 	t.set_stylebox("hover", "Button", _box(Color("34384a")))

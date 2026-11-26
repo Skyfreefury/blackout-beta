@@ -308,6 +308,10 @@ func add_work(delta: float) -> void:
 
 ## Busca algo cerca con E: compañero derribado, tarea, pila, objeto de valor o carro.
 func start_interact() -> void:
+	for counter: ShopCounter in get_tree().get_nodes_in_group("shop_counters"):
+		if global_position.distance_to(counter.global_position) <= ShopCounter.RANGE:
+			counter.buy()
+			return
 	var target := _find_hold_target()
 	if target != null:
 		hold_target = target

@@ -2,6 +2,7 @@
 
 Uso: python tools/gen_task_sprites.py
 Tareas a 16x24 como el generador, objetos a 10x10 y carro a 16x16. Paleta de gen_placeholders.py.
+También los objetos de la tienda (shop_*.png, 10x10) que se ven sobre los mostradores.
 """
 from pathlib import Path
 
@@ -108,10 +109,66 @@ def cart():
     return outline(img)
 
 
+def shop_battery():
+    """Pila de litio grande con rayo."""
+    img = canvas(10, 10)
+    rect(img, 2, 2, 7, 9, "slate")
+    rect(img, 4, 0, 5, 1, "light")
+    rect(img, 3, 3, 6, 8, "yellow")
+    px(img, [(5, 4), (4, 5), (5, 5), (4, 6)], "black")
+    return outline(img)
+
+
+def shop_shoes():
+    """Zapatillas de correr."""
+    img = canvas(10, 10)
+    rect(img, 1, 5, 6, 7, "white")
+    rect(img, 1, 3, 3, 5, "white")
+    rect(img, 1, 8, 8, 8, "gray")
+    rect(img, 6, 6, 8, 7, "white")
+    px(img, [(2, 4), (4, 6), (5, 6)], "scrubs")
+    return outline(img)
+
+
+def shop_bag():
+    """Mochila grande con correas."""
+    img = canvas(10, 10)
+    rect(img, 1, 2, 8, 9, "moss")
+    rect(img, 3, 0, 6, 1, "moss")
+    rect(img, 2, 5, 7, 8, "sick")
+    px(img, [(2, 3), (7, 3)], "black")
+    rect(img, 4, 5, 5, 5, "yellow")
+    return outline(img)
+
+
+def shop_medkit():
+    """Botiquín blanco con cruz roja."""
+    img = canvas(10, 10)
+    rect(img, 0, 2, 9, 9, "white")
+    rect(img, 3, 0, 6, 1, "gray")
+    rect(img, 4, 3, 5, 8, "red")
+    rect(img, 2, 5, 7, 6, "red")
+    return outline(img)
+
+
+def shop_dart():
+    """Pistola de dardos con un dardo naranja."""
+    img = canvas(10, 10)
+    rect(img, 0, 3, 7, 4, "gray")
+    rect(img, 1, 5, 3, 8, "slate")
+    px(img, [(8, 3), (9, 3)], "light")
+    rect(img, 4, 7, 8, 7, "light")
+    px(img, [(9, 7)], "yellow")
+    px(img, [(4, 6), (4, 8)], "red")
+    return outline(img)
+
+
 def main() -> None:
     for name, make in (("task_archive", archive), ("task_computer", computer), ("task_valve", valve),
                        ("loot_samples", loot_samples), ("loot_tools", loot_tools),
-                       ("loot_watch", loot_watch), ("loot_microscope", loot_microscope), ("cart", cart)):
+                       ("loot_watch", loot_watch), ("loot_microscope", loot_microscope), ("cart", cart),
+                       ("shop_battery", shop_battery), ("shop_shoes", shop_shoes), ("shop_bag", shop_bag),
+                       ("shop_medkit", shop_medkit), ("shop_dart", shop_dart)):
         make().save(OUT / f"{name}.png")
         print(f"ok: {name}.png")
 

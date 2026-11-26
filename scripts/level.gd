@@ -22,7 +22,7 @@ const TILES_TEXTURE := preload("res://art/sprites/tiles.png")
 ## Capa de física de los obstáculos: frenan el paso pero no cortan la luz.
 const OBSTACLE_LAYER := 16
 ## Caracteres que el monstruo trata como bloqueo al planear su camino.
-const MONSTER_BLOCKING := "#XEciwt123aov"
+const MONSTER_BLOCKING := "#XEciwt123aovK"
 
 @export_file("*.txt") var map_path := "res://maps/hospital.txt"
 ## Semilla del reparto de objetos. El anfitrión la elige y la envía, así todos ven el mismo mapa.
@@ -51,6 +51,10 @@ var loot_spawns: Array[Vector2] = []
 var loot_count := -1
 ## Carro donde se entrega el botín (símbolo D).
 var cart_position := Vector2.ZERO
+## Mostradores de la sala tienda (símbolo K), de izquierda a derecha.
+var counter_spawns: Array[Vector2] = []
+## Casillas del ascensor de la sala tienda (símbolo Y).
+var _lift_cells := {}
 var door_open := false
 ## Rejilla de caminos del monstruo. Las casillas junto a paredes cuentan como
 ## bloqueadas para que su cuerpo de 28 px no se enganche en las esquinas.
@@ -179,6 +183,11 @@ func is_exit(pos: Vector2) -> bool:
 	return _char_at(world_to_cell(pos)) == "E"
 
 
+## True si ese punto está dentro del ascensor de la sala tienda.
+func is_lift(pos: Vector2) -> bool:
+	return _lift_cells.has(world_to_cell(pos))
+
+
 func door_position() -> Vector2:
 	if _door_cells.is_empty():
 		return Vector2.ZERO
@@ -219,6 +228,14 @@ func _place(cell: Vector2i) -> void:
 			return
 		"S":
 			tiles.set_cell(cell, 0, STAIRS)
+			return
+		"K":
+			tiles.set_cell(cell, 0, OBSTACLES["t"])
+			counter_spawns.append(center)
+			return
+		"Y":
+			tiles.set_cell(cell, 0, STAIRS)
+			_lift_cells[cell] = true
 			return
 	if OBSTACLES.has(c):
 		tiles.set_cell(cell, 0, OBSTACLES[c])

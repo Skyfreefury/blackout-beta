@@ -37,6 +37,8 @@ var game_level := 1
 var bank := 0
 ## Mejoras de la tienda: id de red -> {mejora: veces comprada}. Las decide el anfitrión.
 var upgrades := {}
+## True en la sala tienda entre niveles (maps/shop.txt). game_level es el nivel que viene.
+var in_shop := false
 
 var _loaded := {}
 var _in_game := false
@@ -95,12 +97,13 @@ func close() -> void:
 
 
 ## Solo el anfitrión: carga la escena de juego en todos los equipos con un mapa nuevo.
-func start_game(level := 1) -> void:
+## shop: carga antes la sala tienda; su ascensor lleva después al nivel.
+func start_game(level := 1, shop := false) -> void:
 	if not multiplayer.is_server():
 		return
 	_in_game = true
 	_loaded.clear()
-	_load_game.rpc(randi_range(1, 0x7fffffff), maxi(level, 1))
+	_load_game.rpc(randi_range(1, 0x7fffffff), maxi(level, 1), shop)
 
 
 ## Lo llama la escena de juego al terminar de montarse.
@@ -156,10 +159,11 @@ func _sync_players(list: Dictionary, role_list: Dictionary) -> void:
 
 
 @rpc("authority", "call_local", "reliable")
-func _load_game(seed_value: int, level: int) -> void:
+func _load_game(seed_value: int, level: int, shop := false) -> void:
 	map_seed = seed_value
 	game_level = level
-	if level == 1:
+	in_shop = shop
+	if level == 1 and not shop:
 		bank = 0
 		upgrades = {}
 	get_tree().change_scene_to_file(GAME_SCENE)

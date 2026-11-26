@@ -10,6 +10,7 @@ extends Node
 ##   --crowd=N                              Nonatos como con N jugadores (scream: chillido)
 ##   --seed=N                               reparto de generadores, monstruo y pilas
 ##   --role=N                               rol del jugador local (índice de Roles.LIST)
+##   --shoproom --scenario=shoproom         sala tienda: compra zapatillas y dardo; --lift entra al ascensor
 ##   --scenario=shop                        compra mejoras con 1000 € y prueba el botiquín
 ##   --bank=N   (anfitrión) pone N € en el banco común   --buy=mejora   compra al segundo
 ## En red (lanzando el menú con --host=N o --join=IP):
@@ -51,7 +52,8 @@ func _ready() -> void:
 		for m: Monster in main.monsters:
 			m.process_mode = Node.PROCESS_MODE_DISABLED
 	await _setup(main)
-	_monster_start = main.monster.global_position
+	if main.monster != null:
+		_monster_start = main.monster.global_position
 	_player_start = main.player.global_position
 	await _wait(int(_args.get("frames", "120")))
 	_report(main)
@@ -182,6 +184,17 @@ func _setup(main: Node) -> void:
 				player.start_interact()
 			else:
 				player.hit()
+		"shoproom":
+			# Compra en dos mostradores con 1000 €: zapatillas (150) y dardo (160).
+			Net.bank = 1000
+			var counters := get_tree().get_nodes_in_group("shop_counters")
+			for i in [1, 4]:
+				player.global_position = counters[i].global_position + Vector2(0, 18)
+				await _wait(2)
+				player.start_interact()
+				await _wait(5)
+			if _args.has("lift"):
+				player.global_position = level.cell_center(Vector2i(9, 9))
 		"shop":
 			# Compras con 1000 €: 120 + 240 de pila, 200 de mochila y 180 de botiquín.
 			Net.bank = 1000
@@ -241,6 +254,13 @@ func _physics_process(_delta: float) -> void:
 
 func _report(main: Node) -> void:
 	var monster: Monster = main.monster
+	if monster == null:
+		var me: Player = main.player
+		print("RESULT id=%d scenario=%s shop=%s counters=%d bank=%d upgrades=%s walk=%.0f max_carry=%d" % [
+			multiplayer.get_unique_id(), _args.get("scenario", "-"), Net.in_shop,
+			get_tree().get_nodes_in_group("shop_counters").size(), Net.bank, Net.upgrades,
+			me.walk_speed, me.max_carry])
+		return
 	var p: Player = main.player
 	var gens := (main.tasks as Array).filter(func(g): return g.repaired).size()
 	var line := "RESULT id=%d scenario=%s frozen=%s monster_in_light=%s monster_moved=%.1f downed=%s dead=%s escaped=%s downs=%d battery=%.1f walked=%.1f batteries=%d gens=%d door=%s ended=%s players=%d" % [
