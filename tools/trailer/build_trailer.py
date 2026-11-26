@@ -5,8 +5,10 @@ Uso:
   python tools/trailer/gen_future_monsters.py   # monstruos de escenarios futuros
   python tools/trailer/build_trailer.py         # imagen, sonido y MP4
 
-Entradas: builds/trailer/raw/<plano>/f*.png (320x180), art/sprites, art/font, audio/*.wav
-y builds/trailer/maps/*.txt (hospitales aleatorios de tools/check_hospital_gen.gd).
+Entradas: builds/trailer/raw/<plano>/f*.png (320x180), art/sprites, art/font, audio/*.wav,
+builds/trailer/maps/*.txt (hospitales aleatorios de tools/check_hospital_gen.gd),
+art/raw/suno/The Silence Before.mp3 (música, golpe fuerte a los 61 s) y
+art/raw/gemini_video/gemini_generated_video_5c1d8cda.mp4 (apertura con el hospital).
 Salida: builds/trailer/blackout_trailer.mp4
 """
 import math
@@ -177,7 +179,14 @@ SHOTS = [
     (57.0, 6.0, "logo", None),
     (63.0, 4.0, "card", "Beta en desarrollo\n\ngithub.com/Skyfreefury/blackout-beta"),
 ]
-TOTAL = 67.0
+# Apertura con el vídeo de Gemini: todo lo demás se retrasa INTRO s y el logo cae a los 61 s,
+# en el golpe fuerte de la música.
+INTRO = 4.0
+INTRO_VIDEO = ROOT / "art" / "raw" / "gemini_video" / "gemini_generated_video_5c1d8cda.mp4"
+INTRO_FROM = 2.6
+MUSIC = ROOT / "art" / "raw" / "suno" / "The Silence Before.mp3"
+SHOTS = [(0.0, INTRO, "video", None)] + [(s + INTRO, d, k, x) for s, d, k, x in SHOTS]
+TOTAL = 67.0 + INTRO
 
 # Rótulos encima de los planos: (inicio, fin, texto, color, posición).
 OVERLAYS = [
@@ -191,6 +200,27 @@ OVERLAYS = [
     (41.3, 51.3, "Próximamente", (138, 147, 160), "bottom"),
     (53.7, 55.9, "Sal con vida.", WHITE, "bottom"),
 ]
+OVERLAYS = [(a + INTRO, b + INTRO, t, c, p) for a, b, t, c, p in OVERLAYS]
+
+
+def _load_intro() -> list[Image.Image]:
+    reader = imageio_ffmpeg.read_frames(str(INTRO_VIDEO), output_params=["-vf", f"scale={W}:{H}"])
+    meta = next(reader)
+    fps = meta["fps"]
+    frames = []
+    for i, raw in enumerate(reader):
+        t = i / fps
+        if t < INTRO_FROM:
+            continue
+        if t > INTRO_FROM + INTRO + 0.2:
+            break
+        frames.append(Image.frombytes("RGB", (W, H), raw))
+    reader.close()
+    return frames
+
+
+INTRO_FRAMES: list[Image.Image] = []
+INTRO_FPS = 24
 
 _text_cache: dict[tuple, Image.Image] = {}
 
@@ -233,6 +263,14 @@ def frame_at(t: float, rng: np.random.Generator) -> Image.Image:
         a = fade(t, start, start + dur, 0.12)
         if a < 1.0:
             img = Image.blend(BLACK, img, a)
+    elif kind == "video":
+        if not INTRO_FRAMES:
+            INTRO_FRAMES.extend(_load_intro())
+        img = INTRO_FRAMES[min(int(local * INTRO_FPS), len(INTRO_FRAMES) - 1)].copy()
+        if local < 0.6:
+            img = Image.blend(BLACK, img, local / 0.6)
+        if local > dur - 0.4:
+            img = Image.blend(img, BLACK, (local - (dur - 0.4)) / 0.4)
     elif kind == "map":
         img = map_frame(data, local, dur)
     elif kind == "portrait":
@@ -360,7 +398,37 @@ def music_box(seconds: float) -> np.ndarray:
     return out + echo
 
 
+def load_media_audio(path: Path, start: float = 0.0, seconds: float | None = None) -> np.ndarray:
+    cmd = [imageio_ffmpeg.get_ffmpeg_exe(), "-loglevel", "error", "-ss", str(start), "-i", str(path)]
+    if seconds:
+        cmd += ["-t", str(seconds)]
+    cmd += ["-vn", "-ac", "1", "-ar", str(SR), "-f", "f32le", "-"]
+    return np.frombuffer(subprocess.run(cmd, capture_output=True, check=True).stdout, dtype=np.float32).astype(np.float64)
+
+
 def build_audio() -> np.ndarray:
+    """Música de Suno de fondo, sonido del vídeo de apertura y efectos del juego encima."""
+    n = int(TOTAL * SR)
+    mix = np.zeros(n)
+    place(mix, load_media_audio(MUSIC), 0.0, 0.8)
+    place(mix, load_media_audio(INTRO_VIDEO, INTRO_FROM, INTRO) * env(int(INTRO * SR), 0.3, 0.6), 0.0, 0.7)
+    heart = load_wav("heartbeat_loop")
+    x = INTRO + 1.0
+    while x < INTRO + 15.0:
+        place(mix, heart, x, 0.35)
+        x += 1.25
+    for name, at, gain in (("generator_on", 12.0, 0.7), ("flashlight", 19.9, 0.7), ("monster_freeze", 19.95, 0.8),
+                           ("revive", 30.6, 0.5), ("monster_scream", 31.5, 0.8), ("dart", 33.7, 0.8),
+                           ("door_open", 53.5, 0.7)):
+        place(mix, load_wav(name), at + INTRO, gain)
+    for at in (51.5, 52.0, 52.5, 53.0):
+        place(mix, load_wav("monster_scream")[: int(0.4 * SR)], at + INTRO, 0.5)
+    peak = np.max(np.abs(mix))
+    return np.tanh(mix / peak * 1.2) * 0.89
+
+
+def build_audio_synth() -> np.ndarray:
+    """Banda sonora sintetizada de la primera versión (sin música de Suno)."""
     n = int(TOTAL * SR)
     t = np.arange(n) / SR
     rng = np.random.default_rng(1)
