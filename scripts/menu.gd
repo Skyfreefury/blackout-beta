@@ -11,7 +11,7 @@ const ACCENT := Color("8f3a3a")
 const HELP := [
 	["t", "CÓMO JUGAR\nBeta en desarrollo: puede haber fallos y cambios."],
 	["t", "OBJETIVO\nEscapad del hospital por la salida de urgencias. Se abre al cumplir dos cosas:\n1. Hacer todas las tareas del nivel (lista arriba a la izquierda).\n2. Entregar botín en el carro hasta cubrir la cuota."],
-	["t", "TAREAS\nMantén E junto a ellas. El progreso no se pierde al soltar."],
+	["t", "TAREAS\nMantén E junto a ellas. El progreso no se pierde al soltar. El armario de fármacos necesita la llave dorada que brilla en otra sala; si caes, la sueltas."],
 	["i", "res://art/sprites/generator.png", "Generador, 10 s. Enciende las luces de emergencia de su zona: el Nonato no entra en ellas."],
 	["i", "res://art/sprites/task_archive.png", "Archivador, 6 s. Recoger los historiales."],
 	["i", "res://art/sprites/task_computer.png", "Ordenador, 8 s. Reiniciarlo."],
