@@ -63,6 +63,10 @@ var _freeze_cooldown := 0.0
 var _stun_timer := 0.0
 ## Segundos dormido por un dardo tranquilizante. No se mueve, no ataca ni chilla.
 var _sleep_timer := 0.0
+## Jugador agarrado. Mientras dura, el Nonato no se mueve. Solo en el anfitrión.
+var _grabbing: Player = null
+## Aturdimiento al soltarse un jugador del agarre.
+const BREAK_FREE_STUN := 1.2
 var _unlit_time := 99.0
 ## Jugadores que le están dando con la linterna en este fotograma (solo en el anfitrión).
 var _watchers: Array[Player] = []
@@ -94,6 +98,12 @@ func _physics_process(delta: float) -> void:
 	sprite.position = Vector2.ZERO
 	if not multiplayer.is_server():
 		return
+	if _grabbing != null:
+		if is_instance_valid(_grabbing) and _grabbing.grabbed:
+			velocity = Vector2.ZERO
+			sprite.position = Vector2(randi_range(-1, 1), 0)
+			return
+		_grabbing = null
 	if level.is_lamp_zone(global_position):
 		_flee_light()
 	elif not _watchers.is_empty():
@@ -142,6 +152,14 @@ func _update_light_reaction(delta: float) -> void:
 		_scream_timer = maxf(_scream_timer - delta, 0.0)
 		if _scream_timer == 0.0 and not _watchers.is_empty():
 			_scream()
+
+
+## Solo en el anfitrión: el jugador agarrado se suelta o cae. Se aparta unos segundos.
+func release_grab(freed: bool) -> void:
+	_grabbing = null
+	_retreat_timer = RETREAT_TIME
+	if freed:
+		_stun_timer = BREAK_FREE_STUN
 
 
 ## Solo en el anfitrión: lo duerme un dardo tranquilizante.
@@ -194,8 +212,8 @@ func _hunt(delta: float) -> void:
 		return
 	_roam_timer = 0.0
 	if global_position.distance_to(_target.global_position) <= ATTACK_RANGE:
-		_target.hit()
-		_retreat_timer = RETREAT_TIME
+		_target.grab(self)
+		_grabbing = _target
 		velocity = Vector2.ZERO
 		return
 	if _repath_timer <= 0.0:

@@ -8,6 +8,9 @@ signal leave_requested
 const BATTERY_COLOR := Color("e8c547")
 const STAMINA_COLOR := Color("c9d1d3")
 const WORK_COLOR := Color("6b7d6a")
+const HEALTH_COLOR := Color("b33a3a")
+const STRUGGLE_SIZE := Vector2(70, 6)
+const MONSTER_SHEET := preload("res://art/sprites/monster.png")
 const ACCENT := Color("8f3a3a")
 const BAR_SIZE := Vector2(42, 4)
 const FLASH_TIME := 4.0
@@ -28,6 +31,8 @@ var _end_text := Label.new()
 var _end_hint := Label.new()
 var _role_label := Label.new()
 var _bag := Label.new()
+## Animación de muerte en curso: oculta el texto de estado.
+var _killing := false
 
 
 func _ready() -> void:
@@ -63,8 +68,8 @@ func _process(delta: float) -> void:
 	_objective_label.text = objective
 	_flash_timer = maxf(_flash_timer - delta, 0.0)
 	_flash.visible = _flash_timer > 0.0
-	_status.text = "" if _end.visible else _status_text()
-	_bag.position.y = size.y - 30
+	_status.text = "" if _end.visible or _killing else _status_text()
+	_bag.position.y = size.y - 38
 	_bag.text = "" if player == null or player.carried_values.is_empty() \
 		else "Mochila %d/%d  %d €" % [player.carried_values.size(), player.max_carry, player.carried_total()]
 	var darts := 0 if player == null else Net.upgrade_level(player.get_multiplayer_authority(), "dart")
@@ -101,6 +106,74 @@ func show_end(victory: bool, time: float, survivors: PackedStringArray, is_host:
 	_end.visible = true
 
 
+## Animación de muerte del jugador local, unos 2,6 s: el Nonato se abalanza sobre él.
+func play_kill(color_index: int, monster_tint: Color) -> void:
+	var layer := Control.new()
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(layer)
+	var bg := ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color(0, 0, 0, 0)
+	layer.add_child(bg)
+	var victim_tex := AtlasTexture.new()
+	victim_tex.atlas = load(Player.SHEET_PATH % clampi(color_index, 0, 3))
+	victim_tex.region = Rect2(0, 0, 16, 24)
+	var victim := _big_sprite(victim_tex, 3)
+	victim.position = Vector2(size.x * 0.36 - victim.size.x / 2.0, size.y / 2.0 - victim.size.y / 2.0)
+	victim.pivot_offset = victim.size / 2.0
+	layer.add_child(victim)
+	var killer_tex := AtlasTexture.new()
+	killer_tex.atlas = MONSTER_SHEET
+	killer_tex.region = Rect2(0, 0, 40, 40)
+	var killer := _big_sprite(killer_tex, 3)
+	killer.modulate = monster_tint
+	killer.position = Vector2(size.x + 10, size.y / 2.0 - killer.size.y / 2.0)
+	layer.add_child(killer)
+	var flash := ColorRect.new()
+	flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	flash.color = Color(0.7, 0.05, 0.05, 0)
+	layer.add_child(flash)
+	var title := Label.new()
+	title.text = "HAS MUERTO"
+	title.add_theme_font_size_override("font_size", 16)
+	title.add_theme_color_override("font_color", ACCENT)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.size = Vector2(size.x, 20)
+	title.position = Vector2(0, size.y * 0.78)
+	title.modulate.a = 0.0
+	layer.add_child(title)
+	Music.sting("death")
+	_killing = true
+	var tween := layer.create_tween()
+	tween.tween_property(bg, "color:a", 0.92, 0.25)
+	tween.tween_property(killer, "position:x", size.x * 0.52, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func() -> void:
+		Sfx.play_ui("monster_scream")
+		Sfx.play_ui("death"))
+	tween.tween_property(flash, "color:a", 0.75, 0.05)
+	tween.parallel().tween_property(victim, "rotation_degrees", 90.0, 0.15)
+	tween.parallel().tween_property(victim, "modulate", Color(1, 0.3, 0.3), 0.15)
+	tween.tween_property(flash, "color:a", 0.0, 0.35)
+	tween.parallel().tween_property(killer, "position:x", size.x * 0.46, 0.35)
+	tween.tween_property(title, "modulate:a", 1.0, 0.4)
+	tween.tween_interval(1.1)
+	tween.tween_property(layer, "modulate:a", 0.0, 0.5)
+	tween.tween_callback(func() -> void:
+		_killing = false
+		layer.queue_free())
+
+
+func _big_sprite(texture: Texture2D, scale_factor: int) -> TextureRect:
+	var rect := TextureRect.new()
+	rect.texture = texture
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_SCALE
+	rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	rect.size = texture.get_size() * scale_factor
+	return rect
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if _end.visible and event.is_action_pressed("ui_cancel"):
 		leave_requested.emit()
@@ -115,6 +188,8 @@ func _status_text() -> String:
 		return "HAS MUERTO"
 	if player.escaped:
 		return "HAS ESCAPADO"
+	if player.grabbed:
+		return "¡EL NONATO TE HA AGARRADO!\nPulsa E o ESPACIO rápido"
 	if player.blind_time > 0.0:
 		return "EL NONATO CHILLA\nTu linterna no responde"
 	if player.is_down:
@@ -126,8 +201,14 @@ func _draw() -> void:
 	if player == null:
 		return
 	var bottom := size.y - 6.0
+	_bar(Vector2(6, bottom - 18), player.health / Player.HEALTH_MAX, HEALTH_COLOR)
 	_bar(Vector2(6, bottom - 12), player.battery / player.battery_max, BATTERY_COLOR)
 	_bar(Vector2(6, bottom - 6), player.stamina / player.stamina_max, STAMINA_COLOR)
+	if player.grabbed:
+		var spos := Vector2((size.x - STRUGGLE_SIZE.x) / 2.0, size.y / 2.0 + 14)
+		draw_rect(Rect2(spos, STRUGGLE_SIZE), Color(0, 0, 0, 0.8))
+		draw_rect(Rect2(spos + Vector2.ONE, Vector2((STRUGGLE_SIZE.x - 2) * player.struggle, STRUGGLE_SIZE.y - 2)), BATTERY_COLOR)
+		return
 	var target := player.hold_target
 	if target != null and is_instance_valid(target):
 		var pos := Vector2((size.x - BAR_SIZE.x) / 2.0, size.y / 2.0 + 14)

@@ -46,6 +46,21 @@ const SPEED_SLACK := 1.3
 const BURST_ALLOWANCE := 24.0
 const CORRECTION_COOLDOWN := 0.2
 const WOUNDED_TINT := Color(1.0, 0.7, 0.7)
+## Vida y agarre del Nonato. Agarrar quita GRAB_DAMAGE y luego GRAB_DRAIN por segundo.
+## Cada pulsación de E o ESPACIO suma STRUGGLE_PER_PRESS al forcejeo, que baja solo.
+## Con el forcejeo lleno te sueltas; con la vida a 0 caes derribado.
+const HEALTH_MAX := 100.0
+const REVIVE_HEALTH := 50.0
+const GRAB_DAMAGE := 15.0
+const GRAB_DRAIN := 14.0
+const STRUGGLE_PER_PRESS := 0.11
+const STRUGGLE_DECAY := 0.3
+## Forcejeo extra por segundo por cada compañero que alumbra al Nonato.
+const STRUGGLE_LIGHT_HELP := 0.45
+## Pulsaciones por segundo que acepta el anfitrión.
+const MAX_PRESSES := 12
+const REGEN_DELAY := 4.0
+const REGEN_RATE := 4.0
 const ANIM_FPS := 8.0
 const SHEET_PATH := "res://art/sprites/player_%d.png"
 ## Filas de la hoja de sprites.
@@ -89,6 +104,20 @@ var carried_values := PackedInt32Array()
 var down_count := 0
 var down_time := 0.0
 var revive_progress := 0.0
+var health := HEALTH_MAX
+## Agarrado por un Nonato. No puede moverse ni alumbrar; forcejea con E o ESPACIO.
+var grabbed := false:
+	set(value):
+		if value != grabbed:
+			grabbed = value
+			state_changed.emit()
+## Forcejeo de 0 a 1. Lleno: se suelta.
+var struggle := 0.0
+# Solo en el anfitrión.
+var _grabber: Monster = null
+var _since_damage := 0.0
+var _press_window := 0.0
+var _presses := 0
 
 var level: Level
 ## Color del pijama (0 a 3), asignado por orden de llegada.
@@ -174,7 +203,7 @@ func is_active() -> bool:
 
 ## Puede moverse, alumbrar e interactuar.
 func can_act() -> bool:
-	return is_active() and not is_down
+	return is_active() and not is_down and not grabbed
 
 
 func is_repairing() -> bool:
@@ -228,6 +257,9 @@ func _correct_position(pos: Vector2) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_local() and grabbed and (event.is_action_pressed("interact") or event.is_action_pressed("sprint")):
+		_request_struggle.rpc_id(1)
+		return
 	if not is_local() or not can_act():
 		return
 	if event.is_action_pressed("toggle_light") and battery > 0.0 and blind_time == 0.0:
@@ -257,6 +289,85 @@ func is_lighting(point: Vector2) -> bool:
 func hit() -> void:
 	if not multiplayer.is_server() or not can_act():
 		return
+	_knock_down()
+
+
+## Solo en el anfitrión: el Nonato le alcanza y le agarra.
+func grab(monster: Monster) -> void:
+	if not multiplayer.is_server() or not can_act():
+		return
+	_grabber = monster
+	struggle = 0.0
+	grabbed = true
+	_damage(GRAB_DAMAGE)
+	_grab_fx.rpc()
+
+
+@rpc("authority", "call_local", "reliable")
+func _grab_fx() -> void:
+	Sfx.play_at("down", global_position)
+	Sfx.play_at("monster_scream", global_position, -6.0)
+	if is_local():
+		var tween := camera.create_tween()
+		for i in 8:
+			tween.tween_property(camera, "offset", Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.04)
+		tween.tween_property(camera, "offset", Vector2.ZERO, 0.05)
+
+
+## Lo manda el dueño agarrado al pulsar E o ESPACIO.
+@rpc("any_peer", "call_local", "reliable")
+func _request_struggle() -> void:
+	if not multiplayer.is_server() or _sender() != get_multiplayer_authority() or not grabbed:
+		return
+	if _presses >= MAX_PRESSES:
+		return
+	_presses += 1
+	struggle = minf(struggle + STRUGGLE_PER_PRESS, 1.0)
+	if struggle >= 1.0:
+		_release(true)
+
+
+func _damage(amount: float) -> void:
+	health = maxf(health - amount, 0.0)
+	_since_damage = 0.0
+
+
+## Solo en el anfitrión: termina el agarre. freed: se soltó y el Nonato queda aturdido.
+func _release(freed: bool) -> void:
+	grabbed = false
+	struggle = 0.0
+	if _grabber != null and is_instance_valid(_grabber):
+		_grabber.release_grab(freed)
+	_grabber = null
+
+
+## Solo en el anfitrión: el agarre sigue, quita vida y suma la ayuda de los compañeros.
+func _grab_tick(delta: float) -> void:
+	_press_window += delta
+	if _press_window >= 1.0:
+		_press_window = 0.0
+		_presses = 0
+	if _grabber == null or not is_instance_valid(_grabber) or _grabber.frozen:
+		# Un dardo, una lámpara o un aturdimiento le hacen soltar.
+		_release(false)
+		return
+	var helpers := 0
+	for p: Player in get_tree().get_nodes_in_group("players"):
+		if p != self and p.can_act() and _grabber.is_lit_by(p):
+			helpers += 1
+	struggle = clampf(struggle + helpers * STRUGGLE_LIGHT_HELP * delta, 0.0, 1.0)
+	if struggle < 1.0:
+		struggle = maxf(struggle - STRUGGLE_DECAY * delta, 0.0)
+	_damage(GRAB_DRAIN * delta)
+	if struggle >= 1.0:
+		_release(true)
+	elif health <= 0.0:
+		_release(false)
+		_knock_down()
+
+
+## Solo en el anfitrión. Primer derribo o muerte si ya estaba herido.
+func _knock_down() -> void:
 	_drop_loot()
 	if down_count >= 1:
 		is_dead = true
@@ -304,6 +415,7 @@ func add_work(delta: float) -> void:
 	if revive_progress >= REVIVE_TIME:
 		revive_progress = 0.0
 		is_down = false
+		health = REVIVE_HEALTH
 
 
 ## Busca algo cerca con E: compañero derribado, tarea, pila, objeto de valor o carro.
@@ -380,6 +492,12 @@ func lure_distance(from: Vector2) -> float:
 
 
 func _server_tick(delta: float) -> void:
+	if grabbed:
+		_grab_tick(delta)
+	elif can_act() and health < HEALTH_MAX:
+		_since_damage += delta
+		if _since_damage >= REGEN_DELAY:
+			health = minf(health + REGEN_RATE * delta, HEALTH_MAX)
 	if can_act() and level != null and level.door_open and level.is_exit(global_position):
 		escaped = true
 		return
@@ -457,6 +575,7 @@ func _update_visuals(delta: float) -> void:
 	else:
 		flashlight.energy = LIGHT_ENERGY
 	sprite.rotation_degrees = 90.0 if is_down else 0.0
+	sprite.position.x = randf_range(-1.0, 1.0) if grabbed else 0.0
 	sprite.modulate = WOUNDED_TINT if down_count > 0 else Color.WHITE
 
 

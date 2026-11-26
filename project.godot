@@ -21,6 +21,7 @@ Controls="*res://scripts/controls.gd"
 Net="*res://scripts/net.gd"
 Sfx="*res://scripts/sfx.gd"
 Settings="*res://scripts/settings.gd"
+Music="*res://scripts/music.gd"
 
 [display]
 

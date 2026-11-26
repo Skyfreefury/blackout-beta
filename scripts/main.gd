@@ -42,6 +42,12 @@ var _drops := 0
 var _enhanced_monsters := false
 var _heartbeat: AudioStreamPlayer
 var _lift_time := 0.0
+## Segundos que sigue sonando la música de persecución tras alejarse el Nonato.
+var _chase_time := 0.0
+var _kill_shown := false
+## Distancia al Nonato a la que empieza la música de persecución.
+const CHASE_RANGE := 150.0
+const CHASE_HOLD := 3.0
 
 @onready var level: Level = $Level
 @onready var entities: Node2D = $Entities
@@ -89,6 +95,7 @@ func _ready() -> void:
 	level.build()
 	_spawn_world()
 	Sfx.make_loop(self, "ambient_loop", -8.0).play()
+	Music.play("menu" if Net.in_shop else "explore", 2.0, -4.0 if Net.in_shop else 0.0)
 	_heartbeat = Sfx.make_loop(self, "heartbeat_loop")
 
 	# La posición inicial viaja en los datos de aparición: el sincronizador del
@@ -191,7 +198,7 @@ func _physics_process(delta: float) -> void:
 		return
 	hud.objective = _objective_text()
 	_follow_spectated()
-	_update_heartbeat()
+	_update_heartbeat(delta)
 	if not multiplayer.is_server():
 		return
 	if not level.door_open and not tasks.is_empty() and tasks.all(func(t): return t.repaired) \
@@ -262,6 +269,15 @@ func _setup_player(p: Player) -> void:
 	if p.name.to_int() == multiplayer.get_unique_id():
 		player = p
 		hud.player = p
+		p.state_changed.connect(_on_local_state.bind(p))
+
+
+## Animación de muerte al morir el jugador local.
+func _on_local_state(p: Player) -> void:
+	if p.is_dead and not _kill_shown:
+		_kill_shown = true
+		var tint := Monster.ENHANCED_TINT if monster != null and monster.enhanced else Color.WHITE
+		hud.play_kill(p.color_index, tint)
 
 
 ## Solo en el anfitrión.
@@ -308,12 +324,16 @@ func _follow_spectated() -> void:
 
 
 ## Latido más fuerte y rápido cuanto más cerca está el monstruo de la cámara activa.
-func _update_heartbeat() -> void:
+func _update_heartbeat(delta: float) -> void:
 	var camera := get_viewport().get_camera_2d()
 	var dist := INF
 	if camera != null:
 		for m in monsters:
-			dist = minf(dist, camera.global_position.distance_to(m.global_position))
+			if not m.frozen:
+				dist = minf(dist, camera.global_position.distance_to(m.global_position))
+	# Música de persecución con el Nonato cerca; vuelve a la de explorar CHASE_HOLD s después.
+	_chase_time = CHASE_HOLD if dist < CHASE_RANGE else maxf(_chase_time - delta, 0.0)
+	Music.play("chase" if _chase_time > 0.0 else "explore")
 	if dist >= HEARTBEAT_RANGE:
 		if _heartbeat.playing:
 			_heartbeat.stop()
@@ -380,7 +400,7 @@ func _check_end() -> void:
 	# derribados nadie puede reanimarlos: termina ya, sin esperar a que se desangren.
 	var survivors := PackedStringArray()
 	for p: Player in all_players:
-		if p.can_act():
+		if p.can_act() or p.grabbed:
 			return
 		if p.escaped:
 			survivors.append(str(Net.players.get(p.name.to_int(), p.name)))
@@ -393,6 +413,12 @@ func _end_game(victory: bool, time: float, survivors: PackedStringArray) -> void
 	_victory = victory
 	if victory:
 		Net.bank += money
+		Music.sting("win")
+	elif not _kill_shown:
+		Music.sting("death")
+	# Si el jugador local acaba de morir, la pantalla final espera a la animación de muerte.
+	if _kill_shown:
+		await get_tree().create_timer(2.7).timeout
 	hud.show_end(victory, time, survivors, multiplayer.is_server(), Net.game_level)
 
 

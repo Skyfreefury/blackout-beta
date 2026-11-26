@@ -79,3 +79,11 @@ Ideas de partida, sin decidir:
 | Morgue municipal | Cámaras frigoríficas, incinerador, túneles | Cadáver que se levanta al pisar cerca de una camilla |
 
 Cambios necesarios: generador de planos con catálogo de salas por escenario (hoy `scripts/hospital_gen.gd`), hoja de casillas por escenario, sonidos y una escena de monstruo por tipo con su propia IA.
+
+## Agarre y animación de muerte (implementado el 2026-11-26)
+- Vida de 100 (barra roja). Al alcanzarte, el Nonato te agarra: 15 de daño y 14 por segundo.
+- E o ESPACIO suman 0,11 al forcejeo, que baja 0,3 por segundo. Lleno: te sueltas y el Nonato queda aturdido 1,2 s.
+- Un compañero que alumbra al Nonato suma 0,45 por segundo; un dardo o un aturdimiento te suelta al momento.
+- Vida a 0: derribado como antes. Reanimado vuelves con 50; la vida sube 4 por segundo tras 4 s sin daño.
+- Al morir, animación de 2,6 s: el Nonato se abalanza y sale "HAS MUERTO".
+- Música de Suno en `audio/music/`: menú, explorar, persecución (Nonato a menos de 150 px), victoria y muerte. Los originales están en `art/raw/suno/`.

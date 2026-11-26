@@ -184,6 +184,21 @@ func _setup(main: Node) -> void:
 				player.start_interact()
 			else:
 				player.hit()
+		"grab", "grabdie", "kill":
+			# El Nonato agarra al jugador. grab: forcejea 8 veces por segundo y se suelta.
+			# grabdie: no forcejea, la vida llega a 0 y cae derribado.
+			player.light_on = false
+			player.global_position = level.cell_center(Vector2i(40, 16))
+			monster.global_position = level.cell_center(Vector2i(36, 16))
+			# kill: ya herido, el agarre le mata y se ve la animación de muerte.
+			if _args["scenario"] == "kill":
+				player.down_count = 1
+			if _args["scenario"] == "grab":
+				var presser := Timer.new()
+				presser.wait_time = 0.125
+				presser.autostart = true
+				presser.timeout.connect(func(): if player.grabbed: player._request_struggle())
+				add_child(presser)
 		"shoproom":
 			# Compra en dos mostradores con 1000 €: zapatillas (150) y dardo (160).
 			Net.bank = 1000
@@ -281,7 +296,7 @@ func _report(main: Node) -> void:
 	line += " role=%d gen0=%.2f battery_max=%.0f run=%.0f angle=%.0f" % [p.role, main.tasks[0].progress if not main.tasks.is_empty() else 0.0, p.battery_max, p.run_speed, p.light_angle]
 	line += " money=%d quota=%d carried=%d loot=%d" % [main.money, main.quota, p.carried_values.size(), get_tree().get_nodes_in_group("loot").size()]
 	line += " monsters=%d enhanced=%s blind=%.1f light=%s" % [main.monsters.size(), monster.enhanced, p.blind_time, p.light_on]
-	line += " asleep=%.1f" % monster._sleep_timer
+	line += " asleep=%.1f health=%.0f grabbed=%s struggle=%.2f" % [monster._sleep_timer, p.health, p.grabbed, p.struggle]
 	line += " bank=%d upgrades=%s max_carry=%d" % [Net.bank, Net.upgrades, p.max_carry]
 	line += " level=%d tasks=%s" % [Net.game_level, ",".join((main.tasks as Array).map(func(t): return t.kind))]
 	line += " seed=%d gens_at=%s" % [main.level.map_seed, ",".join((main.tasks as Array).map(func(g): return str(main.level.world_to_cell(g.global_position))))]

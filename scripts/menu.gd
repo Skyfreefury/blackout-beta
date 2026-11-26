@@ -22,7 +22,7 @@ const HELP := [
 	["i", "res://art/sprites/loot_watch.png", "Reloj de oro, de 80 a 120 €."],
 	["i", "res://art/sprites/loot_microscope.png", "Microscopio, de 120 a 180 €."],
 	["i", "res://art/sprites/cart.png", "Carro de entrega, en urgencias junto a la salida. E entrega toda la mochila."],
-	["t", "EL NONATO\nCaza a oscuras. Tu linterna lo aturde y le hace buscar otro camino. Prefiere a quien no le apunta y a quien hace tareas.\nPrimer golpe: derribado. Un compañero te reanima manteniendo E. Segundo golpe, o 30 s sin ayuda: mueres."],
+	["t", "EL NONATO\nCaza a oscuras. Tu linterna lo aturde y le hace buscar otro camino. Prefiere a quien no le apunta y a quien hace tareas.\nSi te alcanza, te agarra: pulsa E o ESPACIO rápido para soltarte. El agarre te quita vida (barra roja). Un compañero puede soltarte con un dardo o alumbrando al Nonato. Con la vida a 0 caes derribado: te reanima un compañero manteniendo E. Si caes otra vez, o pasan 30 s sin ayuda, mueres."],
 	["i", "res://art/sprites/monster.png", "Nonato normal.", Rect2(0, 0, 40, 40)],
 	["i", "res://art/sprites/monster.png", "Nonato mejorado, más rojo y grande. Corre más y chilla para apagar linternas. Desde el nivel 2 sale con 2 y 4 jugadores, y con 3 y 4 hay dos Nonatos.", Rect2(0, 0, 40, 40), Color(1.0, 0.7, 0.7)],
 	["t", "LINTERNA\nQ o clic derecho. Gasta pila, más aún si alumbras al Nonato. Con poca pila parpadea."],
@@ -55,6 +55,7 @@ var _fullscreen_check := CheckBox.new()
 
 
 func _ready() -> void:
+	Music.play("menu")
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	theme = _make_theme()
 	_build_ui()
