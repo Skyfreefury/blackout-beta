@@ -87,3 +87,8 @@ Cambios necesarios: generador de planos con catálogo de salas por escenario (ho
 - Vida a 0: derribado como antes. Reanimado vuelves con 50; la vida sube 4 por segundo tras 4 s sin daño.
 - Al morir, animación de 2,6 s: el Nonato se abalanza y sale "HAS MUERTO".
 - Música de Suno en `audio/music/`: menú, explorar, persecución (Nonato a menos de 150 px), victoria y muerte. Los originales están en `art/raw/suno/`.
+
+## Por hacer (anotado el 2026-11-26)
+- Sonido del Nonato: el chillido actual (`monster_scream`, sintetizado) suena feo y no da miedo. Sustituirlo por un grito grave y gutural, más un gorgoteo al arrastrarse y al agarrar. Fuente posible: efectos de ElevenLabs o grabados.
+- Animación de arrastrarse: los 4 fotogramas de `art/sprites/monster.png` son casi iguales. Dibujar un ciclo de 4 a 6 fotogramas con brazos que tiran del cuerpo y piernas que se arrastran.
+- Animación de muerte con movimiento: ahora es un sprite que choca con otro. Hacerla por fases: el Nonato abre los brazos, agarra, muerde y arranca la cabeza, con sangre y temblor de pantalla. Necesita una hoja de sprites propia de unos 8 a 12 fotogramas, más grande que el sprite de juego.
