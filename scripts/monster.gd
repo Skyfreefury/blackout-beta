@@ -308,14 +308,14 @@ func _chased_by_other(player: Player) -> bool:
 	return false
 
 
-## Arrastre a 6 fotogramas por segundo mientras se mueve; quieto al congelarse.
+## Arrastre a 8 fotogramas por segundo (ciclo de 6, art/sprites/monster_crawl.png) mientras se mueve; quieto al congelarse.
 ## También controla sus sonidos, igual en todos los equipos.
 func _animate(delta: float) -> void:
 	var moved := global_position.distance_to(_last_pos) > 0.05
 	_last_pos = global_position
 	if moved and not frozen:
-		_anim_time += delta * 6.0
-	sprite.frame = int(_anim_time) % 4
+		_anim_time += delta * 8.0
+	sprite.frame = int(_anim_time) % sprite.hframes
 	var crawling := moved and not frozen
 	if crawling and not _crawl_sound.playing:
 		_crawl_sound.play()

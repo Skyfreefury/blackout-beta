@@ -12,6 +12,7 @@ const STREAMS := {
 	"monster_loop": preload("res://audio/monster_loop.wav"),
 	"monster_freeze": preload("res://audio/monster_freeze.wav"),
 	"monster_scream": preload("res://audio/monster_scream.wav"),
+	"monster_growl": preload("res://audio/monster_growl.wav"),
 	"dart": preload("res://audio/dart.wav"),
 	"heartbeat_loop": preload("res://audio/heartbeat_loop.wav"),
 	"down": preload("res://audio/down.wav"),

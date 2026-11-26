@@ -149,6 +149,8 @@ def main() -> None:
     wail = [max(-0.5, min(0.5, s * 2.5)) for s in wail]  # distorsión
     save("monster_freeze", envelope(lowpass(wail, 1800), 0.05, 0.5), 0.7)
 
+    # La voz del Nonato (monster_scream, monster_growl, monster_loop) sale de
+    # tools/gen_monster_sounds.py, que se ejecuta después y sobrescribe estos dos.
     # Chillido del Nonato mejorado: grito agudo que sube, con ruido áspero. Apaga linternas.
     shriek = tone(lambda t: 1200 + 900 * t + 120 * math.sin(2 * math.pi * 11 * t), 1.0, "saw", 0.6)
     shriek = [max(-0.45, min(0.45, x * 3.0)) for x in shriek]

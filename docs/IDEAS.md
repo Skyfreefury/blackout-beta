@@ -92,3 +92,8 @@ Cambios necesarios: generador de planos con catálogo de salas por escenario (ho
 - Sonido del Nonato: el chillido actual (`monster_scream`, sintetizado) suena feo y no da miedo. Sustituirlo por un grito grave y gutural, más un gorgoteo al arrastrarse y al agarrar. Fuente posible: efectos de ElevenLabs o grabados.
 - Animación de arrastrarse: los 4 fotogramas de `art/sprites/monster.png` son casi iguales. Dibujar un ciclo de 4 a 6 fotogramas con brazos que tiran del cuerpo y piernas que se arrastran.
 - Animación de muerte con movimiento: ahora es un sprite que choca con otro. Hacerla por fases: el Nonato abre los brazos, agarra, muerde y arranca la cabeza, con sangre y temblor de pantalla. Necesita una hoja de sprites propia de unos 8 a 12 fotogramas, más grande que el sprite de juego.
+
+Hecho el 2026-11-26:
+- Arrastrarse: `art/sprites/monster_crawl.png`, 6 fotogramas de 56x40 recortados de una hoja de Gemini con `tools/cut_nonato_sheets.py` (originales en `art/raw/gemini/`).
+- Muerte por fases: `art/sprites/nonato_kill.png`, 12 fotogramas (salto, agarre, mordisco, cabeza arrancada, cuerpo al suelo) con sonidos, destello rojo y temblor. Unos 4,5 s.
+- Voz del Nonato: `tools/gen_monster_sounds.py` (llanto de bebé con una voz grave debajo, gruñido al agarrar y respiración al arrastrarse). Sintetizada: si no convence, cambiar por efectos de ElevenLabs o grabados.

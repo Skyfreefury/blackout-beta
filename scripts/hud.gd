@@ -10,7 +10,10 @@ const STAMINA_COLOR := Color("c9d1d3")
 const WORK_COLOR := Color("6b7d6a")
 const HEALTH_COLOR := Color("b33a3a")
 const STRUGGLE_SIZE := Vector2(70, 6)
-const MONSTER_SHEET := preload("res://art/sprites/monster.png")
+const KILL_SHEET := preload("res://art/sprites/nonato_kill.png")
+const KILL_FRAMES := 12
+## Segundos de cada fotograma de la animación de muerte.
+const KILL_TIMES := [0.5, 0.18, 0.25, 0.3, 0.45, 0.35, 0.3, 0.35, 0.35, 0.4, 0.45, 0.6]
 const ACCENT := Color("8f3a3a")
 const BAR_SIZE := Vector2(42, 4)
 const FLASH_TIME := 4.0
@@ -106,8 +109,9 @@ func show_end(victory: bool, time: float, survivors: PackedStringArray, is_host:
 	_end.visible = true
 
 
-## Animación de muerte del jugador local, unos 2,6 s: el Nonato se abalanza sobre él.
-func play_kill(color_index: int, monster_tint: Color) -> void:
+## Animación de muerte del jugador local: 12 fotogramas de art/sprites/nonato_kill.png
+## (el Nonato salta, agarra, muerde y arranca la cabeza). Unos 4 s.
+func play_kill(_color_index: int, monster_tint: Color) -> void:
 	var layer := Control.new()
 	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -116,20 +120,15 @@ func play_kill(color_index: int, monster_tint: Color) -> void:
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.color = Color(0, 0, 0, 0)
 	layer.add_child(bg)
-	var victim_tex := AtlasTexture.new()
-	victim_tex.atlas = load(Player.SHEET_PATH % clampi(color_index, 0, 3))
-	victim_tex.region = Rect2(0, 0, 16, 24)
-	var victim := _big_sprite(victim_tex, 3)
-	victim.position = Vector2(size.x * 0.36 - victim.size.x / 2.0, size.y / 2.0 - victim.size.y / 2.0)
-	victim.pivot_offset = victim.size / 2.0
-	layer.add_child(victim)
-	var killer_tex := AtlasTexture.new()
-	killer_tex.atlas = MONSTER_SHEET
-	killer_tex.region = Rect2(0, 0, 40, 40)
-	var killer := _big_sprite(killer_tex, 3)
-	killer.modulate = monster_tint
-	killer.position = Vector2(size.x + 10, size.y / 2.0 - killer.size.y / 2.0)
-	layer.add_child(killer)
+	var frames := AtlasTexture.new()
+	frames.atlas = KILL_SHEET
+	var fw := KILL_SHEET.get_width() / KILL_FRAMES
+	var fh := KILL_SHEET.get_height()
+	frames.region = Rect2(0, 0, fw, fh)
+	var anim := _big_sprite(frames, 1)
+	anim.position = Vector2((size.x - fw) / 2.0, (size.y - fh) / 2.0 - 8)
+	anim.modulate = monster_tint.lerp(Color.WHITE, 0.5)
+	layer.add_child(anim)
 	var flash := ColorRect.new()
 	flash.set_anchors_preset(Control.PRESET_FULL_RECT)
 	flash.color = Color(0.7, 0.05, 0.05, 0)
@@ -140,28 +139,45 @@ func play_kill(color_index: int, monster_tint: Color) -> void:
 	title.add_theme_color_override("font_color", ACCENT)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.size = Vector2(size.x, 20)
-	title.position = Vector2(0, size.y * 0.78)
+	title.position = Vector2(0, size.y - 34)
 	title.modulate.a = 0.0
 	layer.add_child(title)
 	Music.sting("death")
 	_killing = true
 	var tween := layer.create_tween()
-	tween.tween_property(bg, "color:a", 0.92, 0.25)
-	tween.tween_property(killer, "position:x", size.x * 0.52, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	tween.tween_callback(func() -> void:
-		Sfx.play_ui("monster_scream")
-		Sfx.play_ui("death"))
-	tween.tween_property(flash, "color:a", 0.75, 0.05)
-	tween.parallel().tween_property(victim, "rotation_degrees", 90.0, 0.15)
-	tween.parallel().tween_property(victim, "modulate", Color(1, 0.3, 0.3), 0.15)
-	tween.tween_property(flash, "color:a", 0.0, 0.35)
-	tween.parallel().tween_property(killer, "position:x", size.x * 0.46, 0.35)
-	tween.tween_property(title, "modulate:a", 1.0, 0.4)
-	tween.tween_interval(1.1)
+	tween.tween_property(bg, "color:a", 0.94, 0.25)
+	for i in KILL_FRAMES:
+		tween.tween_callback(func() -> void:
+			frames.region = Rect2(i * fw, 0, fw, fh)
+			_kill_beat(i, anim, flash))
+		tween.tween_interval(KILL_TIMES[i])
+	tween.tween_property(title, "modulate:a", 1.0, 0.3)
+	tween.tween_interval(0.8)
 	tween.tween_property(layer, "modulate:a", 0.0, 0.5)
 	tween.tween_callback(func() -> void:
 		_killing = false
 		layer.queue_free())
+
+
+## Sonidos, destellos y temblores en los fotogramas clave de la animación de muerte.
+func _kill_beat(i: int, anim: Control, flash: ColorRect) -> void:
+	match i:
+		1:
+			Sfx.play_ui("monster_scream")
+		2:
+			Sfx.play_ui("monster_growl")
+		5:
+			Sfx.play_ui("monster_growl", 3.0)
+		7:
+			Sfx.play_ui("death")
+			flash.color.a = 0.8
+			flash.create_tween().tween_property(flash, "color:a", 0.0, 0.4)
+	if i in [2, 5, 7]:
+		var base := anim.position
+		var shake := anim.create_tween()
+		for k in 6:
+			shake.tween_property(anim, "position", base + Vector2(randf_range(-3, 3), randf_range(-2, 2)), 0.03)
+		shake.tween_property(anim, "position", base, 0.03)
 
 
 func _big_sprite(texture: Texture2D, scale_factor: int) -> TextureRect:

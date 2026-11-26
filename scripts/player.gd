@@ -305,8 +305,8 @@ func grab(monster: Monster) -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _grab_fx() -> void:
-	Sfx.play_at("down", global_position)
-	Sfx.play_at("monster_scream", global_position, -6.0)
+	Sfx.play_at("down", global_position, -4.0)
+	Sfx.play_at("monster_growl", global_position, 2.0)
 	if is_local():
 		var tween := camera.create_tween()
 		for i in 8:
