@@ -98,3 +98,10 @@ Hecho el 2026-11-26:
 - Arrastrarse: `art/sprites/monster_crawl.png`, 6 fotogramas de 56x40 recortados de una hoja de Gemini con `tools/cut_nonato_sheets.py` (originales en `art/raw/gemini/`).
 - Muerte por fases: `art/sprites/nonato_kill.png`, 12 fotogramas (salto, agarre, mordisco, cabeza arrancada, cuerpo al suelo) con sonidos, destello rojo y temblor. Unos 4,5 s.
 - Voz del Nonato: `tools/gen_monster_sounds.py` (llanto de bebé con una voz grave debajo, gruñido al agarrar y respiración al arrastrarse). Sintetizada: si no convence, cambiar por efectos de ElevenLabs o grabados.
+
+## Por hacer (anotado el 2026-11-27, tras jugar la v0.3.0)
+- Bajar el volumen del arrastre de los Nonatos (`monster_loop`): tapa la música de ambiente.
+- Llanto de los Nonatos más real. El sintetizado no convence. Opciones: grabación de llanto de bebé con licencia libre y deformada, efectos de ElevenLabs o un clip de Suno.
+- Segundo Nonato con otra ruta: hoy sigue la misma dirección que el primero y una sola linterna aturde a los dos. Hacer que se separe y rodee (flanqueo) o que vigile otra zona.
+- Texto del nivel y de las tareas plegable: con muchas tareas tapa la vista. Panel que se abre y se cierra con una tecla (por ejemplo TAB), con un resumen corto siempre visible.
+- Animación del agarre y de la muerte sin comprobar a mano: no se vio en la partida. Probable causa: la animación de muerte solo sale al morir (segundo derribo o desangrado), y el primer agarre solo derriba. El agarre no tiene animación propia: solo tiembla el sprite. Revisar y añadir una animación visible de agarre.
