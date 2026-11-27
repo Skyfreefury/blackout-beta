@@ -29,6 +29,16 @@ const SCREAM_BLIND := 2.0
 const SCREAM_COOLDOWN := 30.0
 ## Un jugador que ya persigue otro Nonato parece un 50% más lejos: se reparten las presas.
 const SHARED_TARGET_FACTOR := 1.5
+## Volumen del arrastre en dB. Bajo para que no tape la música de ambiente.
+const CRAWL_VOLUME := -12.0
+## Flanqueo: si otro Nonato ya va a por el mismo jugador y está más cerca, este busca otra ruta.
+## Las casillas del camino del compañero le cuestan FLANK_WEIGHT veces más, salvo las
+## últimas FLANK_FREE_CELLS junto al jugador. A menos de FLANK_CLOSE px va directo.
+const FLANK_WEIGHT := 12.0
+const FLANK_FREE_CELLS := 3
+const FLANK_CLOSE := 56.0
+## Diferencia de distancia en px que cuenta como empate al decidir quién va delante.
+const FLANK_TIE := 8.0
 ## Segundos sin luz necesarios para que la siguiente linterna vuelva a aturdirlo.
 const STUN_COOLDOWN := 1.5
 const RECOIL_SPEED := 100.0
@@ -82,7 +92,7 @@ func _ready() -> void:
 	if enhanced:
 		sprite.modulate = ENHANCED_TINT
 		sprite.scale = Vector2.ONE * ENHANCED_SCALE
-	_crawl_sound = Sfx.make_loop_2d(self, "monster_loop", -2.0, 300.0)
+	_crawl_sound = Sfx.make_loop_2d(self, "monster_loop", CRAWL_VOLUME, 300.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -218,7 +228,12 @@ func _hunt(delta: float) -> void:
 		return
 	if _repath_timer <= 0.0:
 		_repath_timer = REPATH_TIME
-		_set_path(level.get_monster_path(global_position, _target.global_position))
+		var lead := _lead_hunter()
+		if lead != null and global_position.distance_to(_target.global_position) > FLANK_CLOSE:
+			var avoid := lead._path.slice(lead._path_index, maxi(lead._path.size() - FLANK_FREE_CELLS, lead._path_index))
+			_set_path(level.get_monster_path_avoiding(global_position, _target.global_position, avoid, FLANK_WEIGHT))
+		else:
+			_set_path(level.get_monster_path(global_position, _target.global_position))
 	_follow_path(_target.global_position, SPEED * speed_factor * (ENHANCED_SPEED if enhanced else 1.0))
 
 
@@ -299,6 +314,19 @@ func _pick_target(skip_watchers: bool) -> Player:
 			best_dist = dist
 			best = player
 	return best
+
+
+## Otro Nonato que caza al mismo jugador y está más cerca de él. null si no hay.
+func _lead_hunter() -> Monster:
+	var mine := global_position.distance_to(_target.global_position)
+	for other: Monster in get_tree().get_nodes_in_group("monster"):
+		if other == self or other._target != _target or other.frozen:
+			continue
+		# Empate (salen juntos): va delante el de nombre menor, igual en cada cálculo.
+		var theirs := other.global_position.distance_to(_target.global_position)
+		if theirs < mine - FLANK_TIE or (absf(theirs - mine) <= FLANK_TIE and String(other.name) < String(name)):
+			return other
+	return null
 
 
 func _chased_by_other(player: Player) -> bool:

@@ -105,3 +105,10 @@ Hecho el 2026-11-26:
 - Segundo Nonato con otra ruta: hoy sigue la misma dirección que el primero y una sola linterna aturde a los dos. Hacer que se separe y rodee (flanqueo) o que vigile otra zona.
 - Texto del nivel y de las tareas plegable: con muchas tareas tapa la vista. Panel que se abre y se cierra con una tecla (por ejemplo TAB), con un resumen corto siempre visible.
 - Animación del agarre y de la muerte sin comprobar a mano: no se vio en la partida. Probable causa: la animación de muerte solo sale al morir (segundo derribo o desangrado), y el primer agarre solo derriba. El agarre no tiene animación propia: solo tiembla el sprite. Revisar y añadir una animación visible de agarre.
+
+Hecho el 2026-11-27:
+- Arrastre a -12 dB (antes -2), constante `Monster.CRAWL_VOLUME`.
+- Llanto nuevo en `tools/gen_monster_sounds.py`: pulsos glotales tipo Rosenberg, formantes de bebé (1100, 2600 y 4200 Hz), tono que sube a 560 y 620 Hz con un salto agudo, dos inspiraciones entrecortadas y una voz más grave debajo. Sigue sintetizado: si no convence, usar una grabación con licencia libre.
+- Flanqueo: si otro Nonato va delante a por el mismo jugador, el segundo calcula su ruta con las casillas del camino del primero 12 veces más caras y va directo a menos de 56 px. En hospitales generados comparten del 12% al 53% del camino (antes el 100%).
+- Lista de tareas plegable: desplegada los primeros 8 s del nivel y luego solo la primera línea con "TAB: tareas". TAB la abre y la cierra.
+- Agarre con animación: pantalla oscurecida, borde rojo que late y los fotogramas 3 y 4 de `nonato_kill.png` alternando a 5 por segundo. Si el agarre te mata, sigue la animación de muerte.

@@ -13,6 +13,7 @@ const ACTIONS := {
 	"interact": [KEY_E],
 	"restart": [KEY_R],
 	"fire_dart": [KEY_F],
+	"toggle_tasks": [KEY_TAB],
 	"toggle_fullscreen": [KEY_F11],
 }
 ## Botones del ratón por acción.
@@ -22,7 +23,7 @@ const MOUSE := {
 }
 ## Texto de ayuda que muestran la pausa y el README.
 const HELP := "WASD mover   RATÓN apuntar\nQ o clic derecho linterna\nE coger pila u objeto, entregar en el carro
-Mantener E: tareas y reanimar   F o clic izq. dardo\nESPACIO correr   F11 pantalla completa"
+Mantener E: tareas y reanimar   F o clic izq. dardo\nESPACIO correr   TAB lista de tareas   F11 pantalla completa"
 
 
 func _ready() -> void:

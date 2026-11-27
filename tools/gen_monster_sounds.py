@@ -5,8 +5,9 @@ Sustituye a los sonidos del Nonato de tools/gen_sounds.py:
   audio/monster_scream.wav  chillido (agarre, chillido del mejorado, muerte), 1,6 s
   audio/monster_growl.wav   gruñido corto y húmedo, 0,8 s
   audio/monster_loop.wav    respiración gutural y arrastre en bucle, 3 s
-Fuente de voz: tren de pulsos con tono que cambia, filtrado por formantes de vocal (a, u),
-más una copia una octava más grave, saturación, tartamudeo y reverberación.
+Chillido: llanto de bebé con pulsos glotales tipo Rosenberg, formantes de tracto vocal pequeño,
+saltos de tono, inspiraciones entrecortadas y una voz más grave debajo para deformarlo.
+Gruñido y respiración: tren de pulsos filtrado por formantes, saturación y reverberación.
 """
 import wave
 from pathlib import Path
@@ -75,6 +76,62 @@ def voice(seconds: float, f0_start: float, f0_end: float, vowel: str, sob: float
     return mix * envelope(n, 0.04, seconds * 0.45)
 
 
+def glottal(f0: np.ndarray, open_q: float = 0.6) -> np.ndarray:
+    """Pulso glotal tipo Rosenberg: subida suave y cierre brusco, como una garganta real."""
+    phase = np.cumsum(f0 / RATE) % 1.0
+    rise = open_q * 0.66
+    pulse = np.where(phase < rise, 0.5 * (1 - np.cos(np.pi * phase / rise)),
+                     np.where(phase < open_q, np.cos(0.5 * np.pi * (phase - rise) / (open_q - rise)), 0.0))
+    return np.diff(pulse, prepend=0.0) * RATE / 2000.0
+
+
+def cry_unit(seconds: float, peak: float, wobble: float) -> np.ndarray:
+    """Un "uaaaa" de bebé: tono que sube rápido a peak Hz, se sostiene temblando y cae al final.
+    Formantes de un tracto vocal pequeño (1100, 2600 y 4200 Hz), saltos de tono hacia arriba
+    (hiperfonación) y voz quebrada al final."""
+    n = int(seconds * RATE)
+    t = np.arange(n) / RATE
+    k = t / seconds
+    contour = np.clip(k / 0.12, 0, 1) ** 0.5 * (1 - 0.35 * np.clip((k - 0.7) / 0.3, 0, 1))
+    f0 = 300 + (peak - 300) * contour
+    f0 *= 1 + 0.03 * np.sin(2 * np.pi * 6.5 * t) + wobble * signal.lfilter([1], [1, -0.99], RNG.standard_normal(n)) * 0.003
+    # Hiperfonación: un tramo corto con el tono casi al doble.
+    jump_at = RNG.uniform(0.35, 0.55)
+    jump = np.exp(-((k - jump_at) / 0.06) ** 2)
+    f0 *= 1 + 0.8 * jump
+    src = glottal(f0) * (1 + 0.05 * RNG.standard_normal(n))      # brillo y ronquera
+    src += 0.05 * RNG.standard_normal(n) * contour                  # aire
+    # Vocal "a" que se cierra a "e" en el final.
+    out = formants(src, [(1100, 220, 1.0), (2600, 300, 0.7), (4200, 450, 0.35)]) * (1 - k * 0.4)
+    out += formants(src, [(700, 160, 0.6), (2900, 300, 0.5)]) * k * 0.4
+    amp = np.clip(k / 0.05, 0, 1) * np.clip((1 - k) / 0.12, 0, 1)
+    return out * amp
+
+
+def gasp(seconds: float) -> np.ndarray:
+    """Inspiración entrecortada entre llantos: ruido agudo con un silbido."""
+    n = int(seconds * RATE)
+    t = np.arange(n) / RATE
+    noise = signal.lfilter(*signal.butter(2, [1500 / (RATE / 2), 5000 / (RATE / 2)], "band"), RNG.standard_normal(n))
+    whistle = np.sin(2 * np.pi * np.cumsum(900 + 400 * t / seconds) / RATE) * 0.3
+    return (noise * 0.35 + whistle * 0.6) * np.sin(np.pi * t / seconds) ** 2
+
+
+def cry(parts: list[tuple[str, float, float]], monster: float) -> np.ndarray:
+    """Llanto de bebé encadenado. monster de 0 a 1: baja el tono, añade una voz una octava
+    más grave y aspereza, para que suene a algo que no es del todo un bebé."""
+    pieces = [cry_unit(d, peak, 1.0) if kind == "cry" else gasp(d) for kind, d, peak in parts]
+    x = np.concatenate(pieces)
+    if monster > 0:
+        # Bajada de tono por remuestreo y voz subarmónica (tono a la mitad) mezclada debajo.
+        low = signal.resample(x, int(len(x) * (1 + 0.18 * monster)))[: len(x)]
+        x = x * (1 - 0.4 * monster) + low * 0.6 * monster
+        t = np.arange(len(x)) / RATE
+        x *= 1 + 0.35 * monster * np.sin(2 * np.pi * 47 * t)        # aspereza
+    x = np.tanh(x / (np.max(np.abs(x)) + 1e-9) * 1.8)
+    return x
+
+
 def growl(seconds: float) -> np.ndarray:
     n = int(seconds * RATE)
     t = np.arange(n) / RATE
@@ -120,8 +177,8 @@ def save(name: str, x: np.ndarray, peak: float = 0.9) -> None:
 
 
 def main() -> None:
-    scream = voice(1.6, 380, 620, "a", sob=0.35)
-    save("monster_scream", reverb(scream, 1.2, 0.4), 0.85)
+    scream = cry([("cry", 1.05, 560), ("gasp", 0.28, 0), ("cry", 1.25, 620), ("gasp", 0.22, 0)], monster=0.6)
+    save("monster_scream", reverb(scream, 1.0, 0.3), 0.85)
     save("monster_growl", reverb(growl(0.8), 0.6, 0.25), 0.85)
     save("monster_loop", breathing(3.0), 0.7)
 

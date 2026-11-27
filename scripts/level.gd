@@ -211,6 +211,23 @@ func get_monster_path(from: Vector2, to: Vector2) -> PackedVector2Array:
 	return monster_grid.get_point_path(start, goal, true)
 
 
+## Camino que evita las casillas de otro camino (el de otro Nonato): les sube el coste
+## a weight durante el cálculo y luego lo devuelve a su valor.
+func get_monster_path_avoiding(from: Vector2, to: Vector2, avoid: PackedVector2Array, weight: float) -> PackedVector2Array:
+	var saved := {}
+	for point in avoid:
+		var cell := world_to_cell(point)
+		for d: Vector2i in [Vector2i.ZERO, Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var c := cell + d
+			if monster_grid.is_in_boundsv(c) and not saved.has(c) and not monster_grid.is_point_solid(c):
+				saved[c] = monster_grid.get_point_weight_scale(c)
+				monster_grid.set_point_weight_scale(c, maxf(saved[c], weight))
+	var path := get_monster_path(from, to)
+	for c: Vector2i in saved:
+		monster_grid.set_point_weight_scale(c, saved[c])
+	return path
+
+
 func _place(cell: Vector2i) -> void:
 	var c := _char_at(cell)
 	var center := cell_center(cell)

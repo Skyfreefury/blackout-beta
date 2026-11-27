@@ -17,7 +17,7 @@ Estado: beta en desarrollo. El menú tiene un botón "Cómo jugar" con el objeti
 
 Roles: en la sala de espera el botón Rol cambia entre enfermero/a, corredor/a, técnico/a y vigía. Cada uno tiene una ventaja y una desventaja.
 
-Controles: WASD mover, ratón apuntar, Q o clic derecho linterna (F también vale), E coger pila u objeto de valor y entregar en el carro, mantener E para hacer tareas o reanimar, Espacio correr (Mayús también vale), Escape pausa, F11 pantalla completa, R siguiente nivel tras ganar o repetir tras perder (anfitrión).
+Controles: WASD mover, ratón apuntar, Q o clic derecho linterna (F también vale), E coger pila u objeto de valor y entregar en el carro, mantener E para hacer tareas o reanimar, Espacio correr (Mayús también vale), Escape pausa, Tab lista de tareas, F11 pantalla completa, R siguiente nivel tras ganar o repetir tras perder (anfitrión).
 
 ## Pruebas automáticas
 ```bash

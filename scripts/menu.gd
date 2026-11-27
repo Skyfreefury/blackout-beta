@@ -22,7 +22,8 @@ const HELP := [
 	["i", "res://art/sprites/loot_watch.png", "Reloj de oro, de 80 a 120 €."],
 	["i", "res://art/sprites/loot_microscope.png", "Microscopio, de 120 a 180 €."],
 	["i", "res://art/sprites/cart.png", "Carro de entrega, en urgencias junto a la salida. E entrega toda la mochila."],
-	["t", "EL NONATO\nCaza a oscuras. Tu linterna lo aturde y le hace buscar otro camino. Prefiere a quien no le apunta y a quien hace tareas.\nSi te alcanza, te agarra: pulsa E o ESPACIO rápido para soltarte. El agarre te quita vida (barra roja). Un compañero puede soltarte con un dardo o alumbrando al Nonato. Con la vida a 0 caes derribado: te reanima un compañero manteniendo E. Si caes otra vez, o pasan 30 s sin ayuda, mueres."],
+	["t", "EL NONATO\nCaza a oscuras. Tu linterna lo aturde y le hace buscar otro camino. Prefiere a quien no le apunta y a quien hace tareas.\nDos Nonatos se reparten el camino: uno puede rodearte mientras alumbras al otro.
+Si te alcanza, te agarra: pulsa E o ESPACIO rápido para soltarte. El agarre te quita vida (barra roja). Un compañero puede soltarte con un dardo o alumbrando al Nonato. Con la vida a 0 caes derribado: te reanima un compañero manteniendo E. Si caes otra vez, o pasan 30 s sin ayuda, mueres."],
 	["i", "res://art/sprites/monster_crawl.png", "Nonato normal.", Rect2(0, 0, 56, 40)],
 	["i", "res://art/sprites/monster_crawl.png", "Nonato mejorado, más rojo y grande. Corre más y chilla para apagar linternas. Desde el nivel 2 sale con 2 y 4 jugadores, y con 3 y 4 hay dos Nonatos.", Rect2(0, 0, 56, 40), Color(1.0, 0.7, 0.7)],
 	["t", "LINTERNA\nQ o clic derecho. Gasta pila, más aún si alumbras al Nonato. Con poca pila parpadea."],
@@ -30,7 +31,7 @@ const HELP := [
 	["t", "ROLES\nEn la sala de espera: enfermero/a, corredor/a, técnico/a y vigía. Cada uno tiene una ventaja y una desventaja."],
 	["t", "NIVELES\nCada partida genera un hospital nuevo. El nivel 1 tiene un solo Nonato, más lento que tú corriendo, y cuota de 100 €. Cada nivel suma una tarea y 100 € de cuota. Desde el nivel 2 el hospital es mayor y desde el 3 hay un Nonato más (otro cada 2 niveles). Ganar pasa al siguiente."],
 	["t", "TIENDA\nAl superar un nivel pasáis a la farmacia del hospital. Cada mostrador tiene una mejora con su precio encima: E compra con el banco común. Entrad todos al ascensor para ir al siguiente nivel. Duran mientras ganéis niveles y se pierden al empezar desde el nivel 1.\nPila +25%: más batería. Zapatillas: +10% de velocidad y +20% de aguante. Mochila +1: un hueco más. Botiquín: al caer te levantas solo en 6 s, un uso. Dardo: F o clic izquierdo, duerme al Nonato 5 s; cada compra es un dardo."],
-	["t", "CONTROLES\nWASD mover, ratón apuntar, ESPACIO correr, Q linterna, E usar, F o clic izquierdo dardo, ESC pausa, F11 pantalla completa."],
+	["t", "CONTROLES\nWASD mover, ratón apuntar, ESPACIO correr, Q linterna, E usar, F o clic izquierdo dardo, TAB lista de tareas, ESC pausa, F11 pantalla completa. Si te caes por segunda vez, mueres."],
 ]
 ## Ancho de la columna de dibujos en las instrucciones.
 const HELP_ICON_WIDTH := 58

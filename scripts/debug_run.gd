@@ -199,6 +199,29 @@ func _setup(main: Node) -> void:
 				presser.autostart = true
 				presser.timeout.connect(func(): if player.grabbed: player._request_struggle())
 				add_child(presser)
+		"flank":
+			# Dos Nonatos salen del mismo sitio a por el jugador. El segundo debe tomar otra ruta.
+			player.light_on = false
+			# Con --procgen se quedan en sus sitios de salida y van juntos al del primero.
+			if not OS.get_cmdline_user_args().has("--procgen"):
+				player.global_position = level.cell_center(Vector2i(5, 16))
+			for m: Monster in main.monsters:
+				m.global_position = level.cell_center(Vector2i(40, 16)) if not OS.get_cmdline_user_args().has("--procgen") else main.monsters[0].global_position
+			_main = main
+			await _wait(90)
+			var a: Monster = main.monsters[0]
+			var b: Monster = main.monsters[1]
+			var cells_a := {}
+			for pt in a._path:
+				cells_a[level.world_to_cell(pt)] = true
+			var shared := 0
+			for pt in b._path:
+				if cells_a.has(level.world_to_cell(pt)):
+					shared += 1
+			var to_player_a := a.global_position.direction_to(player.global_position)
+			var to_player_b := b.global_position.direction_to(player.global_position)
+			print("FLANK monsters=%d shared=%d/%d dist_ab=%.0f angle=%.0f" % [main.monsters.size(), shared, b._path.size(),
+				a.global_position.distance_to(b.global_position), rad_to_deg(to_player_a.angle_to(to_player_b))])
 		"key":
 			# Coge la llave, va al armario y lo abre. Con --procgen y una semilla con armario.
 			var cabinet: Task = null

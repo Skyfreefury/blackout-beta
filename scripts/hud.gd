@@ -13,6 +13,10 @@ const STRUGGLE_SIZE := Vector2(70, 6)
 const KILL_SHEET := preload("res://art/sprites/nonato_kill.png")
 const KILL_FRAMES := 12
 ## Segundos de cada fotograma de la animación de muerte.
+## Fotogramas de la hoja de muerte que se usan en el agarre y su velocidad.
+const GRAB_FRAMES := [2, 3]
+const GRAB_FPS := 5.0
+const TASKS_OPEN_TIME := 8.0
 const KILL_TIMES := [0.5, 0.18, 0.25, 0.3, 0.45, 0.35, 0.3, 0.35, 0.35, 0.4, 0.45, 0.6]
 const ACCENT := Color("8f3a3a")
 const BAR_SIZE := Vector2(42, 4)
@@ -36,6 +40,12 @@ var _role_label := Label.new()
 var _bag := Label.new()
 ## Animación de muerte en curso: oculta el texto de estado.
 var _killing := false
+## Lista de tareas desplegada. Plegada solo se ve la primera línea (nivel, tareas y botín).
+var _tasks_open := true
+## Segundos que la lista sigue desplegada al empezar el nivel.
+var _tasks_auto_close := TASKS_OPEN_TIME
+## Tiempo con el jugador agarrado, para alternar los fotogramas del agarre.
+var _grab_time := 0.0
 
 
 func _ready() -> void:
@@ -68,7 +78,13 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	_objective_label.text = objective
+	if _tasks_auto_close > 0.0:
+		_tasks_auto_close -= delta
+		if _tasks_auto_close <= 0.0:
+			_tasks_open = false
+	_objective_label.text = _objective_shown()
+	_objective_label.visible = player == null or not player.grabbed
+	_grab_time = _grab_time + delta if player != null and player.grabbed else 0.0
 	_flash_timer = maxf(_flash_timer - delta, 0.0)
 	_flash.visible = _flash_timer > 0.0
 	_status.text = "" if _end.visible or _killing else _status_text()
@@ -192,7 +208,20 @@ func _big_sprite(texture: Texture2D, scale_factor: int) -> TextureRect:
 	return rect
 
 
+## Plegada: la primera línea y un aviso de TAB. Si solo hay 2 líneas se ven enteras.
+func _objective_shown() -> String:
+	var lines := objective.split("\n")
+	if _tasks_open or lines.size() <= 2:
+		return objective
+	return lines[0] + "   TAB: tareas"
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("toggle_tasks"):
+		_tasks_open = not _tasks_open
+		_tasks_auto_close = 0.0
+		get_viewport().set_input_as_handled()
+		return
 	if _end.visible and event.is_action_pressed("ui_cancel"):
 		leave_requested.emit()
 
@@ -222,7 +251,8 @@ func _draw() -> void:
 	_bar(Vector2(6, bottom - 18), player.health / Player.HEALTH_MAX, HEALTH_COLOR)
 	_bar(Vector2(6, bottom - 12), player.battery / player.battery_max, BATTERY_COLOR)
 	_bar(Vector2(6, bottom - 6), player.stamina / player.stamina_max, STAMINA_COLOR)
-	if player.grabbed:
+	if player.grabbed and not _killing:
+		_draw_grab()
 		var spos := Vector2((size.x - STRUGGLE_SIZE.x) / 2.0, size.y / 2.0 + 14)
 		draw_rect(Rect2(spos, STRUGGLE_SIZE), Color(0, 0, 0, 0.8))
 		draw_rect(Rect2(spos + Vector2.ONE, Vector2((STRUGGLE_SIZE.x - 2) * player.struggle, STRUGGLE_SIZE.y - 2)), BATTERY_COLOR)
@@ -234,6 +264,26 @@ func _draw() -> void:
 	elif player.is_down:
 		var pos := Vector2((size.x - BAR_SIZE.x) / 2.0, size.y / 2.0 + 14)
 		_bar(pos, player.work_ratio(), WORK_COLOR)
+
+
+## Agarre: pantalla oscurecida, borde rojo que late y los fotogramas 3 y 4 de
+## art/sprites/nonato_kill.png (el Nonato agarra y forcejea) alternando a 5 por segundo.
+func _draw_grab() -> void:
+	var fade := minf(_grab_time / 0.2, 1.0)
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0, 0, 0.6 * fade))
+	var pulse := 0.35 + 0.25 * sin(_grab_time * 9.0)
+	var edge := 10.0
+	var red := Color(0.6, 0.02, 0.02, pulse * fade)
+	draw_rect(Rect2(0, 0, size.x, edge), red)
+	draw_rect(Rect2(0, size.y - edge, size.x, edge), red)
+	draw_rect(Rect2(0, 0, edge, size.y), red)
+	draw_rect(Rect2(size.x - edge, 0, edge, size.y), red)
+	var fw := KILL_SHEET.get_width() / KILL_FRAMES
+	var fh := KILL_SHEET.get_height()
+	var frame: int = GRAB_FRAMES[int(_grab_time * GRAB_FPS) % GRAB_FRAMES.size()]
+	var shake := Vector2(randi_range(-1, 1), 0) if frame == GRAB_FRAMES[1] else Vector2.ZERO
+	var pos := Vector2(roundf((size.x - fw) / 2.0), roundf(size.y / 2.0 - fh + 8)) + shake
+	draw_texture_rect_region(KILL_SHEET, Rect2(pos, Vector2(fw, fh)), Rect2(frame * fw, 0, fw, fh), Color(1, 1, 1, fade))
 
 
 func _bar(pos: Vector2, ratio: float, color: Color) -> void:
@@ -256,7 +306,7 @@ func _build_pause() -> void:
 	# Los controles completos están en "Cómo jugar": aquí no caben en 180 px de alto.
 	var help := Label.new()
 	help.text = "Q linterna  E usar  F o clic izq. dardo
-ESPACIO correr"
+ESPACIO correr  TAB tareas"
 	help.add_theme_color_override("font_color", Color("8a93a0"))
 	box.add_child(help)
 	var buttons := HBoxContainer.new()
