@@ -208,12 +208,12 @@ func _big_sprite(texture: Texture2D, scale_factor: int) -> TextureRect:
 	return rect
 
 
-## Plegada: la primera línea y un aviso de TAB. Si solo hay 2 líneas se ven enteras.
+## Plegada: solo el nivel y un aviso de TAB. Si solo hay 2 líneas se ven enteras.
 func _objective_shown() -> String:
 	var lines := objective.split("\n")
 	if _tasks_open or lines.size() <= 2:
 		return objective
-	return lines[0] + "   TAB: tareas"
+	return lines[0].get_slice("   ", 0) + "   TAB: tareas y botín"
 
 
 func _unhandled_input(event: InputEvent) -> void:
