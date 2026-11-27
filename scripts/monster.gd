@@ -31,6 +31,8 @@ const SCREAM_COOLDOWN := 30.0
 const SHARED_TARGET_FACTOR := 1.5
 ## Volumen del arrastre en dB. Bajo para que no tape la música de ambiente.
 const CRAWL_VOLUME := -12.0
+## Llora al fijar un objetivo nuevo, como mucho una vez cada CRY_COOLDOWN s.
+const CRY_COOLDOWN := 10.0
 ## Flanqueo: si otro Nonato ya va a por el mismo jugador y está más cerca, este busca otra ruta.
 ## Las casillas del camino del compañero le cuestan FLANK_WEIGHT veces más, salvo las
 ## últimas FLANK_FREE_CELLS junto al jugador. A menos de FLANK_CLOSE px va directo.
@@ -83,6 +85,7 @@ var _watchers: Array[Player] = []
 ## Jugadores que le iluminaron hace poco -> segundos que le quedan en la memoria.
 var _recent_watchers := {}
 var _scream_timer := SCREAM_COOLDOWN / 2.0
+var _cry_timer := 0.0
 
 @onready var sprite: Sprite2D = $Sprite
 
@@ -199,6 +202,11 @@ func _scream() -> void:
 
 
 @rpc("authority", "call_local", "reliable")
+func _cry_fx() -> void:
+	Sfx.play_at("monster_cry", global_position, -2.0)
+
+
+@rpc("authority", "call_local", "reliable")
 func _scream_fx() -> void:
 	Sfx.play_at("monster_scream", global_position, 2.0)
 
@@ -215,7 +223,12 @@ func _recoil() -> void:
 
 
 func _hunt(delta: float) -> void:
+	var previous := _target
 	_target = _nearest_player()
+	_cry_timer = maxf(_cry_timer - delta, 0.0)
+	if _target != null and _target != previous and _cry_timer == 0.0:
+		_cry_timer = CRY_COOLDOWN
+		_cry_fx.rpc()
 	_repath_timer -= delta
 	if _target == null:
 		_roam(delta)

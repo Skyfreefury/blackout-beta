@@ -3,6 +3,8 @@
 Uso: python tools/gen_monster_sounds.py
 Sustituye a los sonidos del Nonato de tools/gen_sounds.py:
   audio/monster_scream.wav  chillido (agarre, chillido del mejorado, muerte), 1,6 s
+  audio/monster_freeze.wav  quejido corto al recibir la linterna
+  audio/monster_cry.wav     llanto al empezar a perseguir
   audio/monster_growl.wav   gruñido corto y húmedo, 0,8 s
   audio/monster_loop.wav    respiración gutural y arrastre en bucle, 3 s
 Chillido: llanto de bebé con pulsos glotales tipo Rosenberg, formantes de tracto vocal pequeño,
@@ -179,6 +181,12 @@ def save(name: str, x: np.ndarray, peak: float = 0.9) -> None:
 def main() -> None:
     scream = cry([("cry", 1.05, 560), ("gasp", 0.28, 0), ("cry", 1.25, 620), ("gasp", 0.22, 0)], monster=0.6)
     save("monster_scream", reverb(scream, 1.0, 0.3), 0.85)
+    # Quejido corto al recibir la linterna: sustituye al chillido de tools/gen_sounds.py.
+    yelp = cry([("cry", 0.75, 700)], monster=0.6)
+    save("monster_freeze", reverb(yelp, 0.7, 0.3), 0.8)
+    # Llanto al ver a un jugador y empezar a perseguirlo.
+    sob = cry([("gasp", 0.2, 0), ("cry", 0.9, 520), ("gasp", 0.18, 0), ("cry", 0.6, 480)], monster=0.7)
+    save("monster_cry", reverb(sob, 1.0, 0.35), 0.8)
     save("monster_growl", reverb(growl(0.8), 0.6, 0.25), 0.85)
     save("monster_loop", breathing(3.0), 0.7)
 
