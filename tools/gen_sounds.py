@@ -142,19 +142,19 @@ def main() -> None:
     for i, s in enumerate(base):
         t = i / RATE
         gurgle.append(s * (0.5 + 0.5 * math.sin(2 * math.pi * (7 + 3 * math.sin(2 * math.pi * 0.7 * t)) * t)))
-    save("monster_loop", loop_fade(mix(gurgle, tone(lambda t: 70 + 10 * math.sin(2 * math.pi * 0.5 * t), 2.0, "triangle", 0.3))), 0.7)
+    # monster_loop: lo genera tools/gen_monster_sounds.py.
 
     # Monstruo congelado: llanto distorsionado que cae.
     wail = tone(lambda t: 900 * (1 - 0.45 * t) + 40 * math.sin(2 * math.pi * 6 * t), 1.2, "saw", 0.6)
     wail = [max(-0.5, min(0.5, s * 2.5)) for s in wail]  # distorsión
-    save("monster_freeze", envelope(lowpass(wail, 1800), 0.05, 0.5), 0.7)
+    # monster_freeze: lo genera tools/gen_monster_sounds.py.
 
     # La voz del Nonato (monster_scream, monster_growl, monster_loop) sale de
     # tools/gen_monster_sounds.py, que se ejecuta después y sobrescribe estos dos.
     # Chillido del Nonato mejorado: grito agudo que sube, con ruido áspero. Apaga linternas.
     shriek = tone(lambda t: 1200 + 900 * t + 120 * math.sin(2 * math.pi * 11 * t), 1.0, "saw", 0.6)
     shriek = [max(-0.45, min(0.45, x * 3.0)) for x in shriek]
-    save("monster_scream", envelope(lowpass(mix(shriek, noise(1.0, 0.35)), 3200), 0.02, 0.6), 0.8)
+    # monster_scream: lo genera tools/gen_monster_sounds.py.
 
     # Dardo tranquilizante: soplido de aire comprimido con chasquido.
     puff = envelope(lowpass(noise(0.18, 1.0), 2600), 0.003, 0.12)
